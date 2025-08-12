@@ -173,12 +173,12 @@ void setup() {
 
 
   // Initialize the start match button
-  pinMode(START_MATCH_BTN, INPUT_PULLUP);
+  pinMode(START_MATCH_BTN, INPUT_PULLDOWN);
 
 
    // Initialize the stop buttons
   for (int i = 0; i < NUM_BUTTONS; i++) {
-      pinMode(stopButtonPins[i], INPUT_PULLUP);
+      pinMode(stopButtonPins[i], INPUT_PULLDOWN);
   } 
   
    // Initialize preferences
@@ -242,7 +242,7 @@ void loop() {
     FastLED.clear(); // Clear the LED strip
 
     // Check if the start match button is pressed
-    if (digitalRead(START_MATCH_BTN) == LOW) {
+    if (digitalRead(START_MATCH_BTN) == HIGH) {
         Serial.println("Start match button pressed!");
         startMatchPost();
     }
@@ -253,19 +253,19 @@ void loop() {
     {
       if (i == 2 || i == 4 || i == 6)
       {
-        stopButtonStates[i] = true;
+        stopButtonStates[i] = false;
         if (digitalRead(stopButtonPins[i]) == LOW)
         {
-          stopButtonStates[i] = false;
+          stopButtonStates[i] = true;
         }
       }
       else
       {
         // Invert the ESTOPs  only
-        stopButtonStates[i] = false;
+        stopButtonStates[i] = true;
         if (digitalRead(stopButtonPins[i]) == LOW)
         {
-          stopButtonStates[i] = true;
+          stopButtonStates[i] = false;
         }
       }
     }

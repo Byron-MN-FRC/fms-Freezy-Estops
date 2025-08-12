@@ -114,10 +114,10 @@ void postAllStopStatus(bool stopButtonStates[7]) {
         // Convert payload to JSON string
         String jsonString;
         serializeJson(payload, jsonString);
-        
+        Serial.println(jsonString);
         // Configure HTTP POST request
         String url = String(baseUrl) + "/api/freezy/eStopState";
-        Serial.println("URL: " + url); // Print the URL
+        // Serial.println("URL: " + url); // Print the URL
         http.begin(url);
         http.addHeader("Content-Type", "application/json");
         
@@ -127,10 +127,10 @@ void postAllStopStatus(bool stopButtonStates[7]) {
         // Handle the response
         if (httpResponseCode > 0) {
             Serial.println("postAllStopStatus");
-            Serial.printf("Request successful! HTTP code: %d\n", httpResponseCode);
+            // Serial.printf("Request successful! HTTP code: %d\n", httpResponseCode);
             String response = http.getString();
-            Serial.println("Response:");
-            Serial.println(response);
+            // Serial.println("Response:");
+            // Serial.println(response);
         } else {
             Serial.println("postAllStopStatus");
             Serial.printf("Request failed! Error code: %d\n", httpResponseCode);
