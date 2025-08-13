@@ -57,11 +57,6 @@ int heartbeatState = 0;
 long int hartBeatTck = 0;
 long int currentTime = 0;
 
-void getField_stack_lightStatusTest() {
-    setLEDColor(1, 2, true, RED_COLOR);
-    setLEDColor(3, 2, true, BLUE_COLOR);
-}
-
 void getField_stack_lightStatus() {
     long int currentTime = millis();
     if (eth_connected) {
@@ -80,7 +75,7 @@ void getField_stack_lightStatus() {
                 Serial.println(response);
 
                 // Parse and print JSON data
-                JsonDocument doc;
+                StaticJsonDocument<200> doc;
                 DeserializationError error = deserializeJson(doc, response);
                 if (error) {
                     Serial.print("deserializeJson() failed: ");
@@ -89,15 +84,27 @@ void getField_stack_lightStatus() {
                 }
 
                 // Set the LED color based on the field_stack_light status
-                bool redStackLightStatus = doc["redStackLight"].is<bool>() ? doc["redStackLight"].as<bool>() : false;
-                bool blueStackLightStatus = doc["blueStackLight"].is<bool>() ? doc["blueStackLight"].as<bool>() : false;
-                bool orangeStackLightStatus = doc["orangeStackLight"].is<bool>() ? doc["orangeStackLight"].as<bool>() : false;
-                bool greenStackLightStatus = doc["greenStackLight"].is<bool>() ? doc["greenStackLight"].as<bool>() : false;
+                bool redStackLightStatus = doc.containsKey("redStackLight") ? doc["redStackLight"].as<bool>() : false;
+                bool blueStackLightStatus = doc.containsKey("blueStackLight") ? doc["blueStackLight"].as<bool>() : false;
+                bool orangeStackLightStatus = doc.containsKey("orangeStackLight") ? doc["orangeStackLight"].as<bool>() : false;
+                bool greenStackLightStatus = doc.containsKey("greenStackLight") ? doc["greenStackLight"].as<bool>() : false;
                 if (allianceColor == "Field") {
-                    setLEDColor(2, 60, redStackLightStatus, RED_COLOR); // Red
-                    setLEDColor(60, 60, blueStackLightStatus, BLUE_COLOR); // Blue
-                    setLEDColor(120, 60, orangeStackLightStatus, ORANGE_COLOR); // Orange
-                    setLEDColor(180, 56, greenStackLightStatus, GREEN_COLOR); // Green
+                    setLEDColor(1, 3, greenStackLightStatus, GREEN_COLOR); // Green
+                    setLEDColor(25, 6, greenStackLightStatus, GREEN_COLOR); // Green
+                    setLEDColor(57, 3, greenStackLightStatus, GREEN_COLOR); // Green
+
+                    setLEDColor(4, 3, orangeStackLightStatus, ORANGE_COLOR); // Orange
+                    setLEDColor(21, 3, orangeStackLightStatus, ORANGE_COLOR); // Orange
+                    setLEDColor(33, 3, orangeStackLightStatus, ORANGE_COLOR); // Orange
+                    setLEDColor(53, 3, orangeStackLightStatus, ORANGE_COLOR); // Orange
+
+                    setLEDColor(7, 3, blueStackLightStatus, BLUE_COLOR); // Blue
+                    setLEDColor(17, 3, blueStackLightStatus, BLUE_COLOR); // Blue
+                    setLEDColor(37, 3, blueStackLightStatus, BLUE_COLOR); // Blue
+                    setLEDColor(49, 3, blueStackLightStatus, BLUE_COLOR); // Blue
+
+                    setLEDColor(10, 6, redStackLightStatus, RED_COLOR); // Red
+                    setLEDColor(41, 6, redStackLightStatus, RED_COLOR); // Red
                 } else if (allianceColor == "Red") {
                     setLEDColor(1, 1, true, RED_COLOR); // RED
                     setLEDColor(2, 8, false, RED_COLOR); // RED

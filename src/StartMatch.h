@@ -24,7 +24,7 @@ void startMatchPost() {
         HTTPClient http;
 
         // Define payload
-        StaticJsonDocument<200> payload;
+        JsonDocument payload;
         payload["match"] = "start";
         String jsonPayload;
         serializeJson(payload, jsonPayload);

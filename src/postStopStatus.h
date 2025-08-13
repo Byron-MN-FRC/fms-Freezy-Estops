@@ -33,10 +33,10 @@ void postSingleStopStatus(int i, bool stopButtonPressed) {
         HTTPClient http;
 
         // Define payload
-        StaticJsonDocument<200> payload;
+        JsonDocument payload;
         JsonArray array = payload.to<JsonArray>();
         
-        JsonObject channel = array.createNestedObject();
+        JsonObject channel = array.add<JsonObject>();
         if (allianceColor == "Field") {
             channel["channel"] = 0; // Only Channel 0 is used for Field
             channel["state"] = stopButtonPressed;
@@ -92,7 +92,7 @@ void postAllStopStatus(bool stopButtonStates[7]) {
         HTTPClient http;
         
         // Define payload
-        StaticJsonDocument<200> payload;
+        JsonDocument payload;
         JsonArray array = payload.to<JsonArray>();
         
         int offset = 0;
@@ -102,11 +102,11 @@ void postAllStopStatus(bool stopButtonStates[7]) {
             offset = 6;
         }
         
-        JsonObject channel = array.createNestedObject();
+        JsonObject channel = array.add<JsonObject>();
         channel["channel"] = 0 ;
         channel["state"] = stopButtonStates[0];
         for (int i = 1; i < 7; i++) {
-            JsonObject channel = array.createNestedObject();
+            JsonObject channel = array.add<JsonObject>();
             channel["channel"] = i + offset ;
             channel["state"] = stopButtonStates[i];
         }
