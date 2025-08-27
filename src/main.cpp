@@ -21,6 +21,7 @@
 #include "StartMatch.h"               // Include the StartMatch header
 #include "postStopStatus.h"           // Include the postStopStatus header
 #include "Field_stack_lightStatus.h"  // Include the Field_stack_lightStatus header
+#include "Team_stack_lightStatus.h"   // Include the Team_stack_lightStatus
 #include "WebServerSetup.h"           // Include the WebServerSetup header
 #include "GlobalSettings.h"           // Include the GlobalSettings header
 
@@ -67,9 +68,9 @@ extern String netmask;
 
   #define START_MATCH_BTN 40
   #define LEDSTRIP 17             // Pin connected to NeoPixel
-  #define NUM_LEDS 239            // Number of LEDs in the strip
-  int g_Brightness = 5;//15;         // 0-255 LED brightness scale
-  int g_PowerLimit = 50000;//900;        // 900mW Power Limit
+  #define NUM_LEDS 24            // Number of LEDs in the strip
+  int g_Brightness = 255;//15;         // 0-255 LED brightness scale
+  // int g_PowerLimit = 50000;//900;        // 900mW Power Limit
   CRGB g_LEDs[NUM_LEDS] = {0};    // Frame buffer for FastLED
 
   //#define ONBOARD_LED 26 //Board does not have
@@ -97,6 +98,14 @@ extern String netmask;
 
 bool eth_connected = false;
 
+void connected(boolean status) {
+  eth_connected = status;
+  setAllDSIndicators(status?"green":"white", true);
+  if (status) {
+      Serial.println("ETH Connected"); 
+  }
+}
+
 void onEvent(arduino_event_id_t event, arduino_event_info_t info) {
   switch (event) {
     // case ARDUINO_EVENT_WIFI_STA_START:
@@ -105,7 +114,7 @@ void onEvent(arduino_event_id_t event, arduino_event_info_t info) {
     //   break;
     // case ARDUINO_EVENT_WIFI_STA_GOT_IP:
     //   Serial.printf("WiFi STA Got IP: '%s'\n", WiFi.localIP().toString().c_str());
-    //   eth_connected = true;
+    //   connected(true);
     //   break;
     case ARDUINO_EVENT_ETH_START:
       Serial.println("ETH Started");
@@ -118,19 +127,19 @@ void onEvent(arduino_event_id_t event, arduino_event_info_t info) {
     case ARDUINO_EVENT_ETH_GOT_IP:    
       Serial.printf("ETH Got IP: '%s'\n", esp_netif_get_desc(info.got_ip.esp_netif)); 
       Serial.println(ETH);
-      eth_connected = true;
+      connected(true);
       break;
     case ARDUINO_EVENT_ETH_LOST_IP:
       Serial.println("ETH Lost IP");
-      eth_connected = false;
+      connected(false);
       break;
     case ARDUINO_EVENT_ETH_DISCONNECTED:
       Serial.println("ETH Disconnected");
-      eth_connected = false;
+      connected(false);
       break;
     case ARDUINO_EVENT_ETH_STOP:
       Serial.println("ETH Stopped");
-      eth_connected = false;
+      connected(false);
       break;
     default: break;
   }
@@ -159,6 +168,18 @@ IPAddress secondaryDNS("8.8.4.4");
 // 	delay(3000);
 // }
 
+void setupTeamLeds() {
+  // The 12v stack light strip that has 3-LEDs per position.
+  FastLED.addLeds<WS2811, LEDSTRIP, BRG>(g_LEDs, NUM_LEDS);               // Add our LED strip to the FastLED library
+
+  // The test black 
+  // FastLED.addLeds<WS2812B, LEDSTRIP, GRB>(g_LEDs, NUM_LEDS);               // Add our LED strip to the FastLED library
+	FastLED.setBrightness(g_Brightness);
+  //set_max_power_indicator_LED(LED_BUILTIN);                               // Light the builtin LED if we power throttle
+  // FastLED.setMaxPowerInMilliWatts(g_PowerLimit);                          // Set the power limit, above which brightness will be throttled
+  
+}
+
 
 // Setup function
 void setup() {
@@ -166,11 +187,7 @@ void setup() {
   delay(5000);
 
   // Initialize the LED strip
-  FastLED.addLeds<WS2812B, LEDSTRIP, GRB>(g_LEDs, NUM_LEDS);               // Add our LED strip to the FastLED library
-	FastLED.setBrightness(g_Brightness);
-  //set_max_power_indicator_LED(LED_BUILTIN);                               // Light the builtin LED if we power throttle
-  FastLED.setMaxPowerInMilliWatts(g_PowerLimit);                          // Set the power limit, above which brightness will be throttled
-
+  setupTeamLeds();
 
   // Initialize the start match button
   pinMode(START_MATCH_BTN, INPUT_PULLDOWN);
@@ -217,10 +234,10 @@ void setup() {
         }
     }
 
-    // Wait for Ethernet to connect
-    while (!eth_connected) {
-        delay(100);
-    }
+    // // Wait for Ethernet to connect
+    // while (!eth_connected) {
+    //     delay(100);
+    // }
     // Print the IP address
     Serial.print("init - IP Address: ");
     Serial.println(ETH.localIP());
@@ -239,7 +256,7 @@ void loop() {
   static unsigned long lastStatusCheck = 0;
   static unsigned long lastPrint = 0;
     unsigned long currentMillis = millis();
-    FastLED.clear(); // Clear the LED strip
+    // FastLED.clear(); // Clear the LED strip
 
     // Check if the start match button is pressed
     if (digitalRead(START_MATCH_BTN) == HIGH) {
@@ -290,7 +307,8 @@ void loop() {
      */
     // Check alliance status every 500ms
     if (currentMillis - lastStatusCheck >= 500) {
-        getField_stack_lightStatus();
+        // getField_stack_lightStatus();
+        updateTeam_stack_lightStatus();
         lastStatusCheck = currentMillis;  
     }
     // print the IP address every 5 seconds
@@ -310,23 +328,24 @@ void loop() {
         
     }
     
-    int heartbeat_LED = 0;
-    // Use a case statement to set the g_LEDs color based on the heartbeat variable
-    switch (heartbeatState) {
-        case 0:
-            g_LEDs[heartbeat_LED] = CRGB::Black;
-            break;
-        case 1:
-            g_LEDs[heartbeat_LED] = CRGB::White; 
-            break;
-        case 2:
-            g_LEDs[heartbeat_LED] = CRGB::Orange;
-            break;
-        default:
-            g_LEDs[heartbeat_LED] = CRGB::Red;
-            break;
-    }
+    // int heartbeat_LED = 0;
+    // // Use a case statement to set the g_LEDs color based on the heartbeat variable
+    // switch (heartbeatState) {
+    //     case 0:
+    //         g_LEDs[heartbeat_LED] = CRGB::Black;
+    //         break;
+    //     case 1:
+    //         g_LEDs[heartbeat_LED] = CRGB::White; 
+    //         break;
+    //     case 2:
+    //         g_LEDs[heartbeat_LED] = CRGB::Orange;
+    //         break;
+    //     default:
+    //         g_LEDs[heartbeat_LED] = CRGB::Red;
+    //         break;
+    // }
     
+    Serial.printf("show");
     FastLED.show(g_Brightness); //  Show and delay
-    delay(500);
+    delay(200);
 }

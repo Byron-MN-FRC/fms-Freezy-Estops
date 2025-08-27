@@ -90,6 +90,8 @@ void postAllStopStatus(bool stopButtonStates[7]) {
     // Send the HTTP POST request
     if (eth_connected) {
         HTTPClient http;
+        http.setTimeout(1000);
+        http.setConnectTimeout(1000);
         
         // Define payload
         JsonDocument payload;
