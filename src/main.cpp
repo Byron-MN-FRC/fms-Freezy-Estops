@@ -100,7 +100,7 @@ bool eth_connected = false;
 
 void connected(boolean status) {
   eth_connected = status;
-  setAllDSIndicators(status?"green":"white", true);
+  setAllDSIndicators(status ? CRGB::Green : CRGB::White, true);
   if (status) {
       Serial.println("ETH Connected"); 
   }
@@ -171,7 +171,7 @@ IPAddress secondaryDNS("8.8.4.4");
 void setupTeamLeds() {
   // The 12v stack light strip that has 3-LEDs per position.
   FastLED.addLeds<WS2811, LEDSTRIP, BRG>(g_LEDs, NUM_LEDS);               // Add our LED strip to the FastLED library
-
+  FastLED.setTemperature(Tungsten100W);
   // The test black 
   // FastLED.addLeds<WS2812B, LEDSTRIP, GRB>(g_LEDs, NUM_LEDS);               // Add our LED strip to the FastLED library
 	FastLED.setBrightness(g_Brightness);

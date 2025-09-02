@@ -58,20 +58,20 @@ extern CRGB g_LEDs[]; // Declare the LED array
 */
 int ledMatrix[3][2][4] = {
     { // DS1
-    {16, 19, 20, 23}, // L1
-    {17, 18, 21, 22}  // L2
+    {17, 18, 21, 22}, // L2
+    {16, 19, 20, 23} // L1
     },
     {// DS2
      {1, 2, 5, 6},
      {0, 3, 4, 7}
     },
     {// DS3
-     {8, 11, 12, 15},
-     {9, 10, 13, 14}
+     {9, 10, 13, 14},
+     {8, 11, 12, 15}
     },
 };
 
-const int LED_BLINK_SPEED_MS=1000;
+const int LED_BLINK_SPEED_MS=500;
 boolean ledBlinkState=true;
 long lastLedBlinkTime=millis();
 
@@ -93,6 +93,20 @@ CRGB toRGBColor(String color) {
         rgbColor = CRGB::Purple;
     else if (color == "white")
         rgbColor = CRGB::White;
+    else if (color == "teal")
+        rgbColor = CRGB::Teal;
+    else if (color == "navy")
+        rgbColor = CRGB::Navy;
+    else if (color == "magenta")
+        rgbColor = CRGB::Magenta;
+    else if (color == "violet")
+        rgbColor = CRGB::Violet;
+    else if (color == "orangered")
+        rgbColor = CRGB::OrangeRed;
+    else if (color == "darkred")
+        rgbColor = CRGB::DarkRed;
+    else if (color == "amber")
+        rgbColor = CRGB(255, 191, 0);
     return rgbColor;    
 }
 
@@ -101,10 +115,10 @@ CRGB toRGBColor(String color) {
  *
  * @param dsN The drivers station number (1-3)
  * @param layerN The stack light layer (1-n)
- * @param color The color to set the LEDs to if the status is true.
+ * @param rgbColor The color to set the LEDs to if the status is true.
  * @param blank true if we want to blink
  */
-void setDSIndicator(int dsN, int layerN, String color, boolean blink)
+void setDSIndicator(int dsN, int layerN, CRGB rgbColor, boolean blink)
 {
     if (dsN < 1 || dsN > sizeof(ledMatrix[0]) || layerN < 1 || layerN > sizeof(ledMatrix[0][0])) {
         Serial.printf("setDSIndicator: invalid values: dsN=%i, layerN=%i", dsN, layerN);
@@ -120,7 +134,6 @@ void setDSIndicator(int dsN, int layerN, String color, boolean blink)
         lastLedBlinkTime=t;
     }
 
-    CRGB rgbColor = toRGBColor(color);
     if(blink && !ledBlinkState) {
         rgbColor=CRGB::Black;
     }
@@ -134,7 +147,7 @@ void setDSIndicator(int dsN, int layerN, String color, boolean blink)
     // Serial.println("setDSIndicator: return");
 }
 
-void setAllDSIndicators(String color, boolean blink)
+void setAllDSIndicators(CRGB color, boolean blink)
 {
     // Serial.println("setAllDSIndicators");
     for (int i = 1; i <= 3; i++)
@@ -152,6 +165,11 @@ void setAllDSIndicators(String color, boolean blink)
 // 				{
 // 					"color": "black",
 // 					"blink": false
+//					"rgb": {
+//						"r": 0,
+//						"g": 0,
+//						"b": 0
+//					},
 // 				},
 // 				{
 // 					"color": "red",
@@ -193,7 +211,7 @@ void updateTeam_stack_lightStatus()
                 Serial.print("deserializeJson() failed: ");
                 Serial.println(error.f_str());
                 // Blink the error condition
-                setAllDSIndicators("red", true);
+                setAllDSIndicators(CRGB::Red, true);
                 return;
             }
             String allianceColorLower = allianceColor;
@@ -211,21 +229,29 @@ void updateTeam_stack_lightStatus()
                 // Set the lights for this driver station
                 for (int j = 0; j < lightStates.size(); j++)
                 {
-                    setDSIndicator(i + 1, j + 1, 
-                        lightStates[j]["color"].as<String>(), 
-                        lightStates[j]["blink"].as<bool>());
+                    bool blink = lightStates[j]["blink"].as<bool>();
+                    String colorString = lightStates[j]["color"].as<String>();
+                    CRGB color;
+                    if (colorString.length() != 0) {
+                        color = toRGBColor(colorString);
+                    } else {
+                        // Fallback if no color string, use the RGB value
+                        JsonObject colorRGB = lightStates[j]["rgb"];
+                        color = CRGB(colorRGB["r"], colorRGB["g"], colorRGB["b"]);
+                    }
+                    setDSIndicator(i + 1, j + 1, color, blink);
                 }
             }
         } else {
             Serial.printf("GET request failed! HTTP code: %d\n", httpResponseCode);
             // Blink the error condition
-            setAllDSIndicators("red", true);
+            setAllDSIndicators(CRGB::Red, true);
         }
     }
     else
     {
         // Blink the error condition
-        setAllDSIndicators("white", true);
+        setAllDSIndicators(CRGB::Red, true);
     }
 }
 
