@@ -57,6 +57,11 @@ int heartbeatState = 0;
 long int hartBeatTck = 0;
 long int currentTime = 0;
 
+void getField_stack_lightStatusTest() {
+    setLEDColor(1, 2, true, RED_COLOR);
+    setLEDColor(3, 2, true, BLUE_COLOR);
+}
+
 void getField_stack_lightStatus() {
     long int currentTime = millis();
     if (eth_connected) {
@@ -70,12 +75,12 @@ void getField_stack_lightStatus() {
 
             if (httpResponseCode > 0) {
                 String response = http.getString();
-                //Serial.printf("GET request successful! HTTP code: %d\n", httpResponseCode);
-                //Serial.println("Response:");
-                //Serial.println(response);
+                Serial.printf("GET request successful! HTTP code: %d\n", httpResponseCode);
+                Serial.println("Response:");
+                Serial.println(response);
 
                 // Parse and print JSON data
-                StaticJsonDocument<200> doc;
+                JsonDocument doc;
                 DeserializationError error = deserializeJson(doc, response);
                 if (error) {
                     Serial.print("deserializeJson() failed: ");
@@ -84,10 +89,10 @@ void getField_stack_lightStatus() {
                 }
 
                 // Set the LED color based on the field_stack_light status
-                bool redStackLightStatus = doc.containsKey("redStackLight") ? doc["redStackLight"].as<bool>() : false;
-                bool blueStackLightStatus = doc.containsKey("blueStackLight") ? doc["blueStackLight"].as<bool>() : false;
-                bool orangeStackLightStatus = doc.containsKey("orangeStackLight") ? doc["orangeStackLight"].as<bool>() : false;
-                bool greenStackLightStatus = doc.containsKey("greenStackLight") ? doc["greenStackLight"].as<bool>() : false;
+                bool redStackLightStatus = doc["redStackLight"].is<bool>() ? doc["redStackLight"].as<bool>() : false;
+                bool blueStackLightStatus = doc["blueStackLight"].is<bool>() ? doc["blueStackLight"].as<bool>() : false;
+                bool orangeStackLightStatus = doc["orangeStackLight"].is<bool>() ? doc["orangeStackLight"].as<bool>() : false;
+                bool greenStackLightStatus = doc["greenStackLight"].is<bool>() ? doc["greenStackLight"].as<bool>() : false;
                 if (allianceColor == "Field") {
                     setLEDColor(2, 60, redStackLightStatus, RED_COLOR); // Red
                     setLEDColor(60, 60, blueStackLightStatus, BLUE_COLOR); // Blue

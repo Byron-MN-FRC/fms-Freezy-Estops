@@ -33,10 +33,10 @@ void postSingleStopStatus(int i, bool stopButtonPressed) {
         HTTPClient http;
 
         // Define payload
-        StaticJsonDocument<200> payload;
+        JsonDocument payload;
         JsonArray array = payload.to<JsonArray>();
         
-        JsonObject channel = array.createNestedObject();
+        JsonObject channel = array.add<JsonObject>();
         if (allianceColor == "Field") {
             channel["channel"] = 0; // Only Channel 0 is used for Field
             channel["state"] = stopButtonPressed;
@@ -90,9 +90,11 @@ void postAllStopStatus(bool stopButtonStates[7]) {
     // Send the HTTP POST request
     if (eth_connected) {
         HTTPClient http;
+        http.setTimeout(1000);
+        http.setConnectTimeout(1000);
         
         // Define payload
-        StaticJsonDocument<200> payload;
+        JsonDocument payload;
         JsonArray array = payload.to<JsonArray>();
         
         int offset = 0;
@@ -102,11 +104,11 @@ void postAllStopStatus(bool stopButtonStates[7]) {
             offset = 6;
         }
         
-        JsonObject channel = array.createNestedObject();
+        JsonObject channel = array.add<JsonObject>();
         channel["channel"] = 0 ;
         channel["state"] = stopButtonStates[0];
         for (int i = 1; i < 7; i++) {
-            JsonObject channel = array.createNestedObject();
+            JsonObject channel = array.add<JsonObject>();
             channel["channel"] = i + offset ;
             channel["state"] = stopButtonStates[i];
         }
@@ -114,10 +116,10 @@ void postAllStopStatus(bool stopButtonStates[7]) {
         // Convert payload to JSON string
         String jsonString;
         serializeJson(payload, jsonString);
-        
+        Serial.println(jsonString);
         // Configure HTTP POST request
         String url = String(baseUrl) + "/api/freezy/eStopState";
-        Serial.println("URL: " + url); // Print the URL
+        // Serial.println("URL: " + url); // Print the URL
         http.begin(url);
         http.addHeader("Content-Type", "application/json");
         
@@ -127,10 +129,10 @@ void postAllStopStatus(bool stopButtonStates[7]) {
         // Handle the response
         if (httpResponseCode > 0) {
             Serial.println("postAllStopStatus");
-            Serial.printf("Request successful! HTTP code: %d\n", httpResponseCode);
+            // Serial.printf("Request successful! HTTP code: %d\n", httpResponseCode);
             String response = http.getString();
-            Serial.println("Response:");
-            Serial.println(response);
+            // Serial.println("Response:");
+            // Serial.println(response);
         } else {
             Serial.println("postAllStopStatus");
             Serial.printf("Request failed! Error code: %d\n", httpResponseCode);

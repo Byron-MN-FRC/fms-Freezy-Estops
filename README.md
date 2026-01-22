@@ -1,13 +1,22 @@
-![logo](images/Freezy%20Arena%20EStops%20logo.png)
-# Freezy Estops
+# CyBears Estops
 
-Freezy Estops is an application designed to manage emergency stop systems efficiently. This application ensures that all emergency stop mechanisms are monitored and controlled effectively to enhance safety and reliability.
+CyBears Estops is an application designed to manage emergency stop systems efficiently. This application ensures that all emergency stop mechanisms are monitored and controlled effectively to enhance safety and reliability.
 
+This is a fork of the Freezy Arena EStops which uses the ESP32-S3-DevKitM-1 board.  It also adds support for Team Stack Lights.
 
-## Board Types / Build Enviorments 
+## How it works
+
+The ESP32-S3 board is wired to all of stop buttons at the specified GPIO pins, continually monitoring for state changes.
+
+Through the network connection to the 10.0.100.0/24 network, it polls a HTTP RESTful interface provided by the CyBears version the FMS arena server (10.0.100.5).
+- POST switch state
+- GET Field Stack Light state
+- GET Team Stack Light state (CyBears addition)
+
+## Board Types / Build Environments 
 
 - **ESP32-S3-DevKitM-1**
-  - [ESP32-S3 ETH Development Board w/ POE](https://www.amazon.com/ESP32-S3-Ethernet-Development-Processor-Communication/dp/B0DKXFB7PW/ref=sr_1_3?crid=1L2Z0CGR54FHU&dib=eyJ2IjoiMSJ9.UefYGZXbDey6UFv4YsbhNxskNttFl8s9nGFclmjvl9U9fHZN8czEXfbN5aZnUTA7yx2L9qz8ZMAuRYZKQqMXRXAwJYT3bybECpT9NrKEqH9NaQ6Aw_kVLN3HTad1Wk7wn4A42ch_y0oK8E76IgsZocKAqC4twgTc6pTBtCTQBqWJ1jjCOuei6QaViupWRpQ1Z9kxDIeJFblM3zB5BZhZNqrj43zmrMXRS32pJsaL80U.UAjUaJCDwETiQ7RGK9MvWZO2R9tGdLXIJ6uy08mdCZc&dib_tag=se&keywords=esp32+poe&qid=1735571720&sprefix=esp32+poe%2Caps%2C190&sr=8-3)
+  - [ESP32-S3 ETH Development Board w/ POE](https://a.co/d/5kxDrxe)
   - This board is used for Ethernet connectivity.
   - Pins connected to the stop buttons: 
     - 33  // Field stop
@@ -19,31 +28,19 @@ Freezy Estops is an application designed to manage emergency stop systems effici
     - 39  // 3A stop
   - Start match button pin: 40
   - LED strip pin: 17
-  - ~~ONBOARD_LED~~ Board does not have this option
-  - ONBOARD_RGB 21
 
-- **ESP32dev**
-    -[ESP32-S3-DevKitM-1 on Amazon](https://www.amazon.com/ESP-WROOM-32-Development-Microcontroller-Integrated-Compatible/dp/B08D5ZD528/ref=sr_1_3?crid=1BH3BAGLCLPR&dib=eyJ2IjoiMSJ9.XBINg-sjhfF_gUtnMiKGjhCiGW31sXyKLVbL01ZB_eTAv6nJuLtxLYF73ReJRPW1_2Dkc5tT8U7R4Mj3lUXideu8IC_M2NuE5i72-Z6dyDPiToma8un9pUOxEvTdo3YWM1TqHYk89fS2fph4NjHJJI6Vm9B4wR3vTx6njmpae68pk34QTGDdAitnvB8MC73P3nyoX88WTIa1-5LNC1yu3gy5VwFetQGBE68NKv_Amsg.FhBxCRGXHEoQ3rz-NuNdTxv0LFx1RpvhzgUoUu9mP8c&dib_tag=se&keywords=esp32&qid=1735571566&sprefix=esp32%2Caps%2C147&sr=8-3)
-  - This board is used for WiFi connectivity.
-  - Pins connected to the stop buttons: 
-    - 21  // Field stop
-    - 22  // 1E stop
-    - 23  // 1A stop
-    - 25  // 2E stop
-    - 26  // 2A stop
-    - 27  // 3E stop
-    - 32  // 3A stop
-  - Start match button pin: 33
-  - LED strip pin: 4
-  - ONBOARD_LED 2
 
-## Features
+## Features / Limitations
 
--- Work In Prgress
+The primary use of this is as follows:
+- Ethernet with either Static or DHCP address (Set in GlobalSettings.h)
+- 
+
+-- Work In Progress
 - **Web-Based Configuration**: Easily configure the device settings through a web interface.
   - **Alliance Color Selection**: Choose between Red, Blue, and Field alliance colors.
   - **Network Configuration**: Set up the device IP, arena IP, and port.
-  - **DHCP Support**: Currently only DHCP
+  - **DHCP Support**: 
 
 - **Real-Time Status Updates**: Monitor and update the status of the device in real-time.
   - **LED Indicators**: Visual feedback of filed status through LED indicators for different statuses.
@@ -63,6 +60,24 @@ Freezy Estops is an application designed to manage emergency stop systems effici
 - **Preferences Storage**: Save and retrieve configuration settings using non-volatile storage.
   - **Persistent Settings**: Ensure settings are retained across device reboots.
 
+## How to use
+
+### Getting your environment ready
+1.  Install the latest VSCode
+2.  Install the PlatformIO extension
+3.  From the command line, clone this repo.
+    1.  `git clone https://github.com/Byron-MN-FRC/fms-Freezy-Estops.git`
+4.  In VSCode:
+    1.  Open the cloned `fms-Freezy-Estops` folder
+    2.  Open the PlatformIO extension and open the `fms-Freezy-Estops` folder as a project.
+    3.  Open the `src/GlobalSettings.h` file
+        1.  Customize the various settings for your network and usage of the ESP32 you want to program.
+
+**To flash the ESP32:**
+1.  Plug it in to your USB port.  This will power it on and make it available as a USB Serial port.
+2. In VSCode/PlatformIO:
+  1. Click the Build option to compile
+  2. Click on the Upload and Monitor option to flash the ESP32 and start monitoring the USB Serial interface. 
 
 ## Contributing
 
