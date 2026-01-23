@@ -17,6 +17,8 @@
 #define FASTLED_INTERNAL        // Suppress build banner
 #include <FastLED.h>
 #include "GlobalSettings.h"
+#include "ColorUtils.h"
+#include "BlinkState.h"
 
 //extern Adafruit_NeoPixel strip;
 

@@ -17,6 +17,8 @@
 #define FASTLED_INTERNAL // Suppress build banner
 #include <FastLED.h>
 #include "GlobalSettings.h"
+#include "ColorUtils.h"
+#include "BlinkState.h"
 
 // extern Adafruit_NeoPixel strip;
 
@@ -71,45 +73,6 @@ int ledMatrix[3][2][4] = {
     },
 };
 
-const int LED_BLINK_SPEED_MS=500;
-boolean ledBlinkState=true;
-long lastLedBlinkTime=millis();
-
-CRGB toRGBColor(String color) {
-    CRGB rgbColor = CRGB::White;
-    if (color == "black")
-        rgbColor = CRGB::Black;
-    else if (color == "red")
-        rgbColor = CRGB::Red;
-    else if (color == "blue")
-        rgbColor = CRGB::Blue;
-    else if (color == "orange")
-        rgbColor = CRGB::Orange;
-    else if (color == "green")
-        rgbColor = CRGB::Green;
-    else if (color == "yellow")
-        rgbColor = CRGB::Yellow;
-    else if (color == "purple")
-        rgbColor = CRGB::Purple;
-    else if (color == "white")
-        rgbColor = CRGB::White;
-    else if (color == "teal")
-        rgbColor = CRGB::Teal;
-    else if (color == "navy")
-        rgbColor = CRGB::Navy;
-    else if (color == "magenta")
-        rgbColor = CRGB::Magenta;
-    else if (color == "violet")
-        rgbColor = CRGB::Violet;
-    else if (color == "orangered")
-        rgbColor = CRGB::OrangeRed;
-    else if (color == "darkred")
-        rgbColor = CRGB::DarkRed;
-    else if (color == "amber")
-        rgbColor = CRGB(255, 191, 0);
-    return rgbColor;    
-}
-
 /**
  * @brief Sets the color of the drivers station stack light LEDs.
  *
@@ -124,15 +87,7 @@ void setDSIndicator(int dsN, int layerN, CRGB rgbColor, boolean blink)
         Serial.printf("setDSIndicator: invalid values: dsN=%i, layerN=%i", dsN, layerN);
     }
 
-    // We use a global variable so that the blink rates are synchronized for each light.
-    long t = millis();
-    long elapsedTimeMS = t-lastLedBlinkTime;
-    if (elapsedTimeMS > LED_BLINK_SPEED_MS) {
-        // Toggle state
-        // Serial.printf("Toggle %i, %ld, %ld, %i \n",elapsedTimeMS, lastLedBlinkTime,t,ledBlinkState);
-        ledBlinkState = !ledBlinkState;
-        lastLedBlinkTime=t;
-    }
+    updateBlinkState();
 
     if(blink && !ledBlinkState) {
         rgbColor=CRGB::Black;

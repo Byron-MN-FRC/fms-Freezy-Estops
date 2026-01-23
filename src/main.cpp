@@ -9,8 +9,11 @@
 /_____//____/\__/\____/ .___/____/                                  
                      /_/                                            
 */
+// #define PLC_MODEL_DRIVERS_STATION
+// #define PLC_MODEL_FIELD_TABLE
+#define PLC_MODEL_FIELD_HUB
 
-
+#include "GlobalSettings.h"           // Include the GlobalSettings header
 #include <Arduino.h>
 #include <ETH.h>
 // #include <WiFi.h>
@@ -20,11 +23,23 @@
 #include <FastLED.h>
 #include "StartMatch.h"               // Include the StartMatch header
 #include "postStopStatus.h"           // Include the postStopStatus header
-#include "Field_stack_lightStatus.h"  // Include the Field_stack_lightStatus header
-#include "Team_stack_lightStatus.h"   // Include the Team_stack_lightStatus
 #include "WebServerSetup.h"           // Include the WebServerSetup header
-#include "GlobalSettings.h"           // Include the GlobalSettings header
+#include "BlinkState.h"               // Include the BlinkState header
 
+#ifdef PLC_MODEL_FIELD_TABLE
+#include "Field_stack_lightStatus.h"  // Include the Field_stack_lightStatus header
+#endif
+#ifdef PLC_MODEL_DRIVERS_STATION
+#include "Team_stack_lightStatus.h"   // Include the Team_stack_lightStatus
+#endif
+#ifdef PLC_MODEL_FIELD_HUB
+#include "Field_hub_lightStatus.h"    // Include the Field_hub_lightStatus
+#endif
+
+
+// Blink state variables (defined in BlinkState.h as extern)
+boolean ledBlinkState = true;
+long lastLedBlinkTime = 0;
 
 #ifndef ETH_PHY_CS
 #define ETH_PHY_TYPE     ETH_PHY_W5500
@@ -68,9 +83,16 @@ extern String netmask;
 
   #define START_MATCH_BTN 40
   #define LEDSTRIP 17             // Pin connected to NeoPixel
-  #define NUM_LEDS 24            // Number of LEDs in the strip
   int g_Brightness = 255;//15;         // 0-255 LED brightness scale
   // int g_PowerLimit = 50000;//900;        // 900mW Power Limit
+
+#ifdef PLC_MODEL_DRIVERS_STATION
+  #define NUM_LEDS 24            // Number of LEDs in the strip
+#endif
+#ifdef PLC_MODEL_FIELD_HUB
+  #define NUM_LEDS 2             // Number of LEDs in the strip
+#endif
+
   CRGB g_LEDs[NUM_LEDS] = {0};    // Frame buffer for FastLED
 
   //#define ONBOARD_LED 26 //Board does not have
@@ -100,7 +122,12 @@ bool eth_connected = false;
 
 void connected(boolean status) {
   eth_connected = status;
+  #ifdef PLC_MODEL_DRIVERS_STATION
   setAllDSIndicators(status ? CRGB::Green : CRGB::White, true);
+  #endif
+  #ifdef PLC_MODEL_FIELD_HUB
+  setHubLight(status ? CRGB::Orange : CRGB::White, true);
+  #endif
   if (status) {
       Serial.println("ETH Connected"); 
   }
@@ -251,11 +278,11 @@ void setup() {
 
 }
 
-// Main loop
-void loop() {
-  static unsigned long lastStatusCheck = 0;
-  static unsigned long lastPrint = 0;
-    unsigned long currentMillis = millis();
+
+unsigned long currentMillis;
+static unsigned long lastPrint = 0;
+static unsigned long lastStatusCheck = 0;
+void processButtonStates() {
     // FastLED.clear(); // Clear the LED strip
 
     // Check if the start match button is pressed
@@ -304,11 +331,27 @@ void loop() {
             postSingleStopStatus(i, true);
         }
     }
-     */
+     */  
+}
+
+// Main loop
+void loop() {
+    currentMillis = millis();
+    #ifdef PLC_MODEL_DRIVERS_STATION
+    processButtonStates();
+    #endif
+
     // Check alliance status every 500ms
     if (currentMillis - lastStatusCheck >= 500) {
-        // getField_stack_lightStatus();
+        #ifdef PLC_MODEL_FIELD_HUB
+        updateHub_lightStatus();
+        #endif 
+        #ifdef PLC_MODEL_FIELD_TABLE
+         getField_stack_lightStatus();
+        #endif
+        #ifdef PLC_MODEL_DRIVERS_STATION
         updateTeam_stack_lightStatus();
+        #endif
         lastStatusCheck = currentMillis;  
     }
     // print the IP address every 5 seconds
