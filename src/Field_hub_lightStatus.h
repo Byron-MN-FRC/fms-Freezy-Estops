@@ -81,7 +81,7 @@ void updateHub_lightStatus()
           lastPollTimeMS = currentTime;
 
             HTTPClient http;
-            String url = "http://" + arenaIP + ":" + arenaPort + "/api/freezy/hub_status";
+            String url = "http://" + arenaIP + ":" + arenaPort + "/api/freezy/hub_status?alliance=" + allianceColor;
             http.setTimeout(1000);
             http.setConnectTimeout(1000);
             http.begin(url);
