@@ -279,11 +279,10 @@ void setup() {
 }
 
 
-unsigned long currentMillis;
-static unsigned long lastPrint = 0;
-static unsigned long lastStatusCheck = 0;
+boolean lastStopButtonStates[NUM_BUTTONS];
 void processButtonStates() {
     // FastLED.clear(); // Clear the LED strip
+    boolean stateChanged = false;
 
     // Check if the start match button is pressed
     if (digitalRead(START_MATCH_BTN) == HIGH) {
@@ -302,6 +301,10 @@ void processButtonStates() {
         {
           stopButtonStates[i] = true;
         }
+        if(lastStopButtonStates[i] != stopButtonStates[i]) {
+          lastStopButtonStates[i] = stopButtonStates[i];
+          stateChanged = true;
+        }
       }
       else
       {
@@ -311,11 +314,18 @@ void processButtonStates() {
         {
           stopButtonStates[i] = false;
         }
+        if(lastStopButtonStates[i] != stopButtonStates[i]) {
+          lastStopButtonStates[i] = stopButtonStates[i];
+          stateChanged = true;
+        }
       }
     }
 
   // Call the postAllStopStatus method with the array
-  postAllStopStatus(stopButtonStates);
+  if(stateChanged) {
+    Serial.println("processButtonStates() statechanged=true");
+    postAllStopStatus(stopButtonStates);
+  }
 
 
 /*     // Check if the stop buttons are pressed
@@ -334,27 +344,29 @@ void processButtonStates() {
      */  
 }
 
+static unsigned long lastPrint = 0;
 // Main loop
+// Because we are using HTTP requests synchronously, there is a limit to what we can do with LED blinking and other
+// effects.  
+// The loop runs fast, relying on each method to handle it's state changes accordingly.
 void loop() {
-    currentMillis = millis();
+    long currentMillis = millis();
     #ifdef PLC_MODEL_DRIVERS_STATION
     processButtonStates();
     #endif
 
-    // Check alliance status every 500ms
-    if (currentMillis - lastStatusCheck >= 500) {
-        #ifdef PLC_MODEL_FIELD_HUB
-        updateHub_lightStatus();
-        #endif 
-        #ifdef PLC_MODEL_FIELD_TABLE
-         getField_stack_lightStatus();
-        #endif
-        #ifdef PLC_MODEL_DRIVERS_STATION
-        updateTeam_stack_lightStatus();
-        #endif
-        lastStatusCheck = currentMillis;  
-    }
-    // print the IP address every 5 seconds
+    // Check alliance status
+    #ifdef PLC_MODEL_FIELD_HUB
+    updateHub_lightStatus();
+    #endif 
+    #ifdef PLC_MODEL_FIELD_TABLE
+      getField_stack_lightStatus();
+    #endif
+    #ifdef PLC_MODEL_DRIVERS_STATION
+    updateTeam_stack_lightStatus();
+    #endif
+
+      // print the IP address every 5 seconds
     if (currentMillis - lastPrint >= 5000) {
         lastPrint = currentMillis;
         deviceIP = preferences.getString("deviceIP", "");
@@ -388,7 +400,7 @@ void loop() {
     //         break;
     // }
     
-    Serial.printf("show");
-    FastLED.show(g_Brightness); //  Show and delay
-    delay(200);
+    // Serial.printf("show");
+    // FastLED.show(g_Brightness); //  Show and delay
+    // delay(50);
 }

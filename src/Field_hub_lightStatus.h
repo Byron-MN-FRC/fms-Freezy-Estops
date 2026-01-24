@@ -25,10 +25,11 @@ extern String arenaIP;
 extern String arenaPort;
 
 extern CRGB g_LEDs[];
+static const int NUM_LEDS=2;
 
-void setHubLight(CRGB rgbColor, boolean blink)
+void setHubLight(CRGB rgbColor, boolean blink, int blinkRateMS)
 {
-    updateBlinkState();
+    updateBlinkState(blinkRateMS);
 
     if(blink && !ledBlinkState) {
         rgbColor=CRGB::Black;
@@ -39,6 +40,15 @@ void setHubLight(CRGB rgbColor, boolean blink)
     {
         g_LEDs[i] = rgbColor;
     }
+    FastLED.show();
+}
+
+void setHubLight(CRGB rgbColor, boolean blink) {
+    setHubLight(rgbColor, blink, 250);
+}
+
+void setHubLight(CRGB rgbColor) {
+    setHubLight(rgbColor, false, 0);
 }
 
 // Example payload from FMS:
@@ -59,61 +69,68 @@ void setHubLight(CRGB rgbColor, boolean blink)
 // 	    }
 // 	}
 
+static long lastPollTimeMS;
+static const int pollIntervalMS = 200;
 void updateHub_lightStatus()
 {
     // long int currentTime = millis();
     if (eth_connected)
     {
-        HTTPClient http;
-        String url = "http://" + arenaIP + ":" + arenaPort + "/api/freezy/hub_status";
-        http.setTimeout(1000);
-        http.setConnectTimeout(1000);
-        http.begin(url);
-        int httpResponseCode = http.GET();
+        long currentTime = millis();
+        if(currentTime-lastPollTimeMS >= pollIntervalMS) {
+          lastPollTimeMS = currentTime;
 
-        if (httpResponseCode == HTTP_CODE_OK)
-        {
-            String response = http.getString();
-            Serial.printf("GET request successful! HTTP code: %d\n", httpResponseCode);
-            Serial.println("Response:");
-            Serial.println(response);
+            HTTPClient http;
+            String url = "http://" + arenaIP + ":" + arenaPort + "/api/freezy/hub_status";
+            http.setTimeout(1000);
+            http.setConnectTimeout(1000);
+            http.begin(url);
+            int httpResponseCode = http.GET();
 
-            // Parse and print JSON data
-            JsonDocument doc;
-            DeserializationError error = deserializeJson(doc, response);
-            if (error) {
-                Serial.print("deserializeJson() failed: ");
-                Serial.println(error.f_str());
-                // Blink the error condition
-                setHubLight(CRGB::Red, true);
-                return;
-            }
-            String allianceColorLower = allianceColor;
-            allianceColorLower.toLowerCase();
+            if (httpResponseCode == HTTP_CODE_OK)
+            {
+                String response = http.getString();
+                // Serial.printf("GET request successful! HTTP code: %d\n", httpResponseCode);
+                // Serial.println("Response:");
+                // Serial.println(response);
 
-            // Return an array of objects, 1 per hub (2 of them)
-            JsonObject hubState = doc[allianceColorLower];
-            bool blink = hubState["blink"].as<bool>();
-            String colorString = hubState["color"].as<String>();
-            CRGB color;
-            if (colorString.length() != 0) {
-                color = toRGBColor(colorString);
+                // Parse and print JSON data
+                JsonDocument doc;
+                DeserializationError error = deserializeJson(doc, response);
+                if (error) {
+                    Serial.print("deserializeJson() failed: ");
+                    Serial.println(error.f_str());
+                    // Blink the error condition
+                    setHubLight(CRGB::Yellow, true, 250);
+                    return;
+                }
+                String allianceColorLower = allianceColor;
+                allianceColorLower.toLowerCase();
+
+                // Return an array of objects, 1 per hub (2 of them)
+                JsonObject hubState = doc[allianceColorLower];
+                bool blink = hubState["blink"].as<bool>();
+                String colorString = hubState["color"].as<String>();
+                CRGB color;
+                if (colorString.length() != 0) {
+                    color = toRGBColor(colorString);
+                } else {
+                    // Fallback if no color string, use the RGB value
+                    JsonObject colorRGB = hubState["rgb"];
+                    color = CRGB(colorRGB["r"], colorRGB["g"], colorRGB["b"]);
+                }
+                setHubLight(color, blink);
             } else {
-                // Fallback if no color string, use the RGB value
-                JsonObject colorRGB = hubState["rgb"];
-                color = CRGB(colorRGB["r"], colorRGB["g"], colorRGB["b"]);
+                Serial.printf("GET request failed! HTTP code: %d\n", httpResponseCode);
+                // Blink the error condition
+                setHubLight(CRGB::Yellow, true, 250);
             }
-            setHubLight(color, blink);
-        } else {
-            Serial.printf("GET request failed! HTTP code: %d\n", httpResponseCode);
-            // Blink the error condition
-            setHubLight(CRGB::Red, true);
         }
     }
     else
     {
         // Blink the error condition
-        setHubLight(CRGB::Red, true);
+        setHubLight(CRGB::Yellow, true, 250);
     }
 }
 #endif

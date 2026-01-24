@@ -14,14 +14,13 @@
 
 #include <Arduino.h>
 
-const int LED_BLINK_SPEED_MS = 500;
 extern boolean ledBlinkState;
 extern long lastLedBlinkTime;
 
-inline void updateBlinkState() {
+inline void updateBlinkState(int rate_ms) {
     long t = millis();
     long elapsedTimeMS = t - lastLedBlinkTime;
-    if (elapsedTimeMS > LED_BLINK_SPEED_MS) {
+    if (elapsedTimeMS > rate_ms) {
         ledBlinkState = !ledBlinkState;
         lastLedBlinkTime = t;
     }

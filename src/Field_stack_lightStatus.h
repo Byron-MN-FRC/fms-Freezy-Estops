@@ -48,6 +48,7 @@ void setLEDColor(int ledIndex1, int length, bool status, CRGB color) {
             g_LEDs[i] = CRGB::Black; // Turn off the LED
         }
     }
+    FastLED.show();
 }
 
 const CRGB RED_COLOR = CRGB(255, 0, 0);
@@ -67,8 +68,8 @@ void getField_stack_lightStatusTest() {
 void getField_stack_lightStatus() {
     long int currentTime = millis();
     if (eth_connected) {
-        //if(currentTime > hartBeatTck){  //Get the status every 500ms
-            //hartBeatTck = currentTime + 500;
+        if(currentTime > hartBeatTck){  //Get the status every 200ms
+            hartBeatTck = currentTime + 200;
             
             HTTPClient http;
             String url = "http://" + arenaIP + ":" + arenaPort + "/api/freezy/field_stack_light";
@@ -131,7 +132,7 @@ void getField_stack_lightStatus() {
                 }
             }
             http.end();
-        //} //Get the status every 500ms
+        } //Get the status every 200ms
 
     } else {
         Serial.println("Network not connected! [FSL]");

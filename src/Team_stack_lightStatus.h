@@ -87,7 +87,7 @@ void setDSIndicator(int dsN, int layerN, CRGB rgbColor, boolean blink)
         Serial.printf("setDSIndicator: invalid values: dsN=%i, layerN=%i", dsN, layerN);
     }
 
-    updateBlinkState();
+    updateBlinkState(500);
 
     if(blink && !ledBlinkState) {
         rgbColor=CRGB::Black;
@@ -99,6 +99,7 @@ void setDSIndicator(int dsN, int layerN, CRGB rgbColor, boolean blink)
         // Serial.printf("(%i,%i,%i,%s)\n", dsN-1, layerN-1, i, color);
         g_LEDs[ledMatrix[dsN - 1][layerN - 1][i]] = rgbColor;
     }
+    FastLED.show();
     // Serial.println("setDSIndicator: return");
 }
 
@@ -132,7 +133,8 @@ void setAllDSIndicators(CRGB color, boolean blink)
 // 				}
 // 			]
 // 		},
-
+static long lastPollTimeMS;
+static const int pollIntervalMS = 200;
 /*
   Retrieves the team stack light status from FMS and sets the LED data 
   Stack blinks WHITE while not connected to FMS.
@@ -141,73 +143,79 @@ void setAllDSIndicators(CRGB color, boolean blink)
  */
 void updateTeam_stack_lightStatus()
 {
-    // long int currentTime = millis();
-    if (eth_connected)
-    {
-        HTTPClient http;
-        String url = "http://" + arenaIP + ":" + arenaPort + "/api/freezy/team_stack_light";
-        http.setTimeout(1000);
-        http.setConnectTimeout(1000);
-        http.begin(url);
-        int httpResponseCode = http.GET();
+    long currentTime = millis();
+    if(currentTime-lastPollTimeMS >= pollIntervalMS) {
+        lastPollTimeMS = currentTime;
 
-        if (httpResponseCode == HTTP_CODE_OK)
+        // long int currentTime = millis();
+        if (eth_connected)
         {
-            String response = http.getString();
-            // Serial.printf("GET request successful! HTTP code: %d\n", httpResponseCode);
-            // Serial.println("Response:");
-            // Serial.println(response);
+            
+            HTTPClient http;
+            String url = "http://" + arenaIP + ":" + arenaPort + "/api/freezy/team_stack_light";
+            http.setTimeout(1000);
+            http.setConnectTimeout(1000);
+            http.begin(url);
+            int httpResponseCode = http.GET();
 
-            // Parse and print JSON data
-            JsonDocument doc;
-            DeserializationError error = deserializeJson(doc, response);
-            if (error)
+            if (httpResponseCode == HTTP_CODE_OK)
             {
-                Serial.print("deserializeJson() failed: ");
-                Serial.println(error.f_str());
+                String response = http.getString();
+                // Serial.printf("GET request successful! HTTP code: %d\n", httpResponseCode);
+                // Serial.println("Response:");
+                // Serial.println(response);
+
+                // Parse and print JSON data
+                JsonDocument doc;
+                DeserializationError error = deserializeJson(doc, response);
+                if (error)
+                {
+                    Serial.print("deserializeJson() failed: ");
+                    Serial.println(error.f_str());
+                    // Blink the error condition
+                    setAllDSIndicators(CRGB::Red, true);
+                    return;
+                }
+                String allianceColorLower = allianceColor;
+                allianceColorLower.toLowerCase();
+
+                // Return an array of objects, 1 per driver station
+                JsonArray teamLightStates = doc[allianceColorLower];
+                // Serial.printf(" Team Light States: %i\n", teamLightStates.size());
+                for (int i = 0; i < teamLightStates.size(); i++)
+                {
+                    // Each driver station has a lightStates array (3 of them)
+                    JsonObject dsState = teamLightStates[i];
+                    JsonArray lightStates = dsState["lightStates"];
+                    // Serial.printf("   Light States: %i\n", lightStates.size());
+                    // Set the lights for this driver station
+                    for (int j = 0; j < lightStates.size(); j++)
+                    {
+                        bool blink = lightStates[j]["blink"].as<bool>();
+                        String colorString = lightStates[j]["color"].as<String>();
+                        CRGB color;
+                        if (colorString.length() != 0) {
+                            color = toRGBColor(colorString);
+                        } else {
+                            // Fallback if no color string, use the RGB value
+                            JsonObject colorRGB = lightStates[j]["rgb"];
+                            color = CRGB(colorRGB["r"], colorRGB["g"], colorRGB["b"]);
+                        }
+                        setDSIndicator(i + 1, j + 1, color, blink);
+                    }
+                }
+            } else {
+                Serial.printf("GET request failed! HTTP code: %d\n", httpResponseCode);
                 // Blink the error condition
                 setAllDSIndicators(CRGB::Red, true);
-                return;
             }
-            String allianceColorLower = allianceColor;
-            allianceColorLower.toLowerCase();
-
-            // Return an array of objects, 1 per driver station
-            JsonArray teamLightStates = doc[allianceColorLower];
-            // Serial.printf(" Team Light States: %i\n", teamLightStates.size());
-            for (int i = 0; i < teamLightStates.size(); i++)
-            {
-                // Each driver station has a lightStates array (3 of them)
-                JsonObject dsState = teamLightStates[i];
-                JsonArray lightStates = dsState["lightStates"];
-                // Serial.printf("   Light States: %i\n", lightStates.size());
-                // Set the lights for this driver station
-                for (int j = 0; j < lightStates.size(); j++)
-                {
-                    bool blink = lightStates[j]["blink"].as<bool>();
-                    String colorString = lightStates[j]["color"].as<String>();
-                    CRGB color;
-                    if (colorString.length() != 0) {
-                        color = toRGBColor(colorString);
-                    } else {
-                        // Fallback if no color string, use the RGB value
-                        JsonObject colorRGB = lightStates[j]["rgb"];
-                        color = CRGB(colorRGB["r"], colorRGB["g"], colorRGB["b"]);
-                    }
-                    setDSIndicator(i + 1, j + 1, color, blink);
-                }
-            }
-        } else {
-            Serial.printf("GET request failed! HTTP code: %d\n", httpResponseCode);
+        }
+        else
+        {
             // Blink the error condition
             setAllDSIndicators(CRGB::Red, true);
         }
-    }
-    else
-    {
-        // Blink the error condition
-        setAllDSIndicators(CRGB::Red, true);
-    }
+    } // Delay
 }
 
 #endif // TEAMSTACKLIGHTSTATUS_H
