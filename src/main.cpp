@@ -9,9 +9,11 @@
 /_____//____/\__/\____/ .___/____/                                  
                      /_/                                            
 */
-// #define PLC_MODEL_DRIVERS_STATION
+
+// Set in platformio.ini
+// #define PLC_MODEL_TEAM
 // #define PLC_MODEL_FIELD_TABLE
-#define PLC_MODEL_FIELD_HUB
+// #define PLC_MODEL_FIELD_HUB
 
 // Set in platformio.ini
 // #define CON_WIFI
@@ -30,7 +32,7 @@
 #ifdef PLC_MODEL_FIELD_TABLE
 #include "Field_stack_lightStatus.h"  // Include the Field_stack_lightStatus header
 #endif
-#ifdef PLC_MODEL_DRIVERS_STATION
+#ifdef PLC_MODEL_TEAM
 #include "Team_stack_lightStatus.h"   // Include the Team_stack_lightStatus
 #endif
 #ifdef PLC_MODEL_FIELD_HUB
@@ -75,11 +77,12 @@ extern String netmask;
   int g_Brightness = 255;//15;         // 0-255 LED brightness scale
   // int g_PowerLimit = 50000;//900;        // 900mW Power Limit
 
-#ifdef PLC_MODEL_DRIVERS_STATION
+#ifdef PLC_MODEL_TEAM
   #define NUM_LEDS 24            // Number of LEDs in the strip
-#endif
-#ifdef PLC_MODEL_FIELD_HUB
+#elif defined(PLC_MODEL_FIELD_HUB)
   #define NUM_LEDS 2             // Number of LEDs in the strip
+#elif defined(PLC_MODEL_FIELD_TABLE)
+  #define NUM_LEDS 16             // Number of LEDs in the strip
 #endif
 
   CRGB g_LEDs[NUM_LEDS] = {0};    // Frame buffer for FastLED
@@ -111,7 +114,7 @@ bool net_connected = false;
 
 void connected(boolean status) {
   net_connected = status;
-  #ifdef PLC_MODEL_DRIVERS_STATION
+  #ifdef PLC_MODEL_TEAM
   setAllDSIndicators(status ? CRGB::Green : CRGB::White, true);
   #endif
   #ifdef PLC_MODEL_FIELD_HUB
@@ -132,8 +135,7 @@ IPAddress secondaryDNS("8.8.4.4");
 // Include the appropriate network module based on build configuration
 #ifdef CON_WIFI
 #include "NetworkWiFi.h"
-#endif
-#ifdef CON_ETH
+#elif defined(CON_ETH)
 #include "NetworkEthernet.h"
 #endif
 
@@ -255,7 +257,7 @@ static unsigned long lastPrint = 0;
 // The loop runs fast, relying on each method to handle it's state changes accordingly.
 void loop() {
     long currentMillis = millis();
-    #ifdef PLC_MODEL_DRIVERS_STATION
+    #ifdef PLC_MODEL_TEAM
     processButtonStates();
     #endif
 
@@ -266,7 +268,7 @@ void loop() {
     #ifdef PLC_MODEL_FIELD_TABLE
       getField_stack_lightStatus();
     #endif
-    #ifdef PLC_MODEL_DRIVERS_STATION
+    #ifdef PLC_MODEL_TEAM
     updateTeam_stack_lightStatus();
     #endif
 
