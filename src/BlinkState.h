@@ -14,8 +14,9 @@
 
 #include <Arduino.h>
 
-extern boolean ledBlinkState;
-extern long lastLedBlinkTime;
+// Blink state variables (defined in BlinkState.h as extern)
+boolean ledBlinkState = true;
+long lastLedBlinkTime = 0;
 
 inline void updateBlinkState(int rate_ms) {
     long t = millis();

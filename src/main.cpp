@@ -29,20 +29,27 @@
 #include "WebServerSetup.h"           // Include the WebServerSetup header
 #include "BlinkState.h"               // Include the BlinkState header
 
+// Board-specific pin definitions (must be before model headers that use them)
+#ifdef ESP32_S3_DEVKITM_1
+  #define LEDSTRIP 17             // Pin connected to NeoPixel
+#elif defined(ESP32DEV)
+  #define LEDSTRIP 4              // Pin connected to NeoPixel
+#endif
+
+
+// Model-specific LED count (must be before model headers that use them)
 #ifdef PLC_MODEL_FIELD_TABLE
+#define NUM_LEDS 16
 #include "Field_stack_lightStatus.h"  // Include the Field_stack_lightStatus header
 #endif
 #ifdef PLC_MODEL_TEAM
+#define NUM_LEDS 24
 #include "Team_stack_lightStatus.h"   // Include the Team_stack_lightStatus
 #endif
 #ifdef PLC_MODEL_FIELD_HUB
+#define NUM_LEDS 92
 #include "Field_hub_lightStatus.h"    // Include the Field_hub_lightStatus
 #endif
-
-
-// Blink state variables (defined in BlinkState.h as extern)
-boolean ledBlinkState = true;
-long lastLedBlinkTime = 0;
 
 #define USE_SERIAL Serial
 
@@ -73,19 +80,8 @@ extern String netmask;
                                           39};   //3A stop                                         
 
   #define START_MATCH_BTN 40
-  #define LEDSTRIP 17             // Pin connected to NeoPixel
   int g_Brightness = 255;//15;         // 0-255 LED brightness scale
   // int g_PowerLimit = 50000;//900;        // 900mW Power Limit
-
-#ifdef PLC_MODEL_TEAM
-  #define NUM_LEDS 24            // Number of LEDs in the strip
-#elif defined(PLC_MODEL_FIELD_HUB)
-  #define NUM_LEDS 2             // Number of LEDs in the strip
-#elif defined(PLC_MODEL_FIELD_TABLE)
-  #define NUM_LEDS 16             // Number of LEDs in the strip
-#endif
-
-  CRGB g_LEDs[NUM_LEDS] = {0};    // Frame buffer for FastLED
 
   //#define ONBOARD_LED 26 //Board does not have
   #define ONBOARD_RGB 21
@@ -103,7 +99,6 @@ extern String netmask;
                                           27,   //3E stop
                                           32};   //3a stop
   #define START_MATCH_BTN 19
-  #define LEDSTRIP 4           // Pin connected to NeoPixel
   #define ONBOARD_LED 2
 #endif // ESP32DEV
 
@@ -138,19 +133,6 @@ IPAddress secondaryDNS("8.8.4.4");
 #elif defined(CON_ETH)
 #include "NetworkEthernet.h"
 #endif
-
-void setupLEDs() {
-  // The 12v stack light strip that has 3-LEDs per position.
-  FastLED.addLeds<WS2811, LEDSTRIP, BRG>(g_LEDs, NUM_LEDS);               // Add our LED strip to the FastLED library
-  FastLED.setTemperature(Tungsten100W);
-  // The test black 
-  // FastLED.addLeds<WS2812B, LEDSTRIP, GRB>(g_LEDs, NUM_LEDS);               // Add our LED strip to the FastLED library
-	FastLED.setBrightness(g_Brightness);
-  //set_max_power_indicator_LED(LED_BUILTIN);                               // Light the builtin LED if we power throttle
-  // FastLED.setMaxPowerInMilliWatts(g_PowerLimit);                          // Set the power limit, above which brightness will be throttled
-  
-}
-
 
 // Setup function
 void setup() {

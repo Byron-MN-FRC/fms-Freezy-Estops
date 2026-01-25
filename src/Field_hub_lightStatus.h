@@ -24,8 +24,15 @@ extern String allianceColor;
 extern String arenaIP;
 extern String arenaPort;
 
-extern CRGB g_LEDs[];
-static const int NUM_LEDS=2;
+CRGB g_LEDs[NUM_LEDS] = {0};
+
+
+void setupLEDs() {
+  // The 12v stack light strip that has 3-LEDs per position.
+  // LEDSTRIP macro must be defined before including this header
+  FastLED.addLeds<WS2811, LEDSTRIP, BRG>(g_LEDs, NUM_LEDS);
+  FastLED.setTemperature(Tungsten100W);
+}
 
 void setHubLight(CRGB rgbColor, boolean blink, int blinkRateMS)
 {
@@ -35,8 +42,7 @@ void setHubLight(CRGB rgbColor, boolean blink, int blinkRateMS)
         rgbColor=CRGB::Black;
     }
 
-    // TODO: Fix the length
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < NUM_LEDS; i++)
     {
         g_LEDs[i] = rgbColor;
     }

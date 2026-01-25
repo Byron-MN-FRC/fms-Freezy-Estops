@@ -28,7 +28,15 @@ extern String allianceColor;
 extern String arenaIP;
 extern String arenaPort;
 
-extern CRGB g_LEDs[]; // Declare the LED array
+CRGB g_LEDs[NUM_LEDS] = {0};
+
+
+void setupLEDs() {
+  // The 12v stack light strip that has 3-LEDs per position.
+  // LEDSTRIP macro must be defined before including this header
+  FastLED.addLeds<WS2811, LEDSTRIP, BRG>(g_LEDs, NUM_LEDS);
+  FastLED.setTemperature(Tungsten100W);
+}
 
 /**
  * @brief Sets the color of two LEDs based on the status.
