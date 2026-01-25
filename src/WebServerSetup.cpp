@@ -1,4 +1,5 @@
 #include "WebServerSetup.h"
+#include "battery.h"
 
 // Define the web server and preferences objects
 AsyncWebServer server(80);

@@ -28,6 +28,7 @@
 #include "postStopStatus.h"           // Include the postStopStatus header
 #include "WebServerSetup.h"           // Include the WebServerSetup header
 #include "BlinkState.h"               // Include the BlinkState header
+#include "battery.h"                  // Battery charge
 
 // Board-specific pin definitions (must be before model headers that use them)
 #ifdef ESP32_S3_DEVKITM_1
@@ -164,6 +165,14 @@ void setup() {
   // Set up the web server
   setupWebServer();
 
+  // Battery charge checker
+  #ifdef ONBATTERY
+  initBattery();
+  #endif
+
+  Serial.println("Battery Monitor");
+  Serial.println("Initializing...");
+
 }
 
 
@@ -233,6 +242,7 @@ void processButtonStates() {
 }
 
 static unsigned long lastPrint = 0;
+static unsigned long lastBatteryCheck = 0;
 // Main loop
 // Because we are using HTTP requests synchronously, there is a limit to what we can do with LED blinking and other
 // effects.  
@@ -262,6 +272,8 @@ void loop() {
         useDHCP = preferences.getBool("useDHCP", true);
         printCurrentIP();
     }
+
+
     
     // int heartbeat_LED = 0;
     // // Use a case statement to set the g_LEDs color based on the heartbeat variable
@@ -283,4 +295,23 @@ void loop() {
     // Serial.printf("show");
     // FastLED.show(g_Brightness); //  Show and delay
     // delay(50);
+
+    // Read battery voltage
+    #ifdef ONBATTERY
+    if (currentMillis - lastBatteryCheck >= 5000) {
+      lastBatteryCheck = currentMillis;
+      float voltage = readBatteryVoltage();
+      float percentage = calculatePercentage(voltage);
+
+      // TODO: Publish the battery voltage
+
+      // Print to Serial Monitor
+      Serial.print("Battery Voltage: ");
+      Serial.print(voltage, 2);
+      Serial.print("V | Charge: ");
+      Serial.print(percentage, 1);
+      Serial.print("%");
+      Serial.println("");
+    }
+    #endif
 }
