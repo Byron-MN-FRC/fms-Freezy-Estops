@@ -23,7 +23,7 @@
 // extern Adafruit_NeoPixel strip;
 
 extern const char *baseUrl;
-extern bool eth_connected;
+extern bool net_connected;
 extern String allianceColor;
 extern String arenaIP;
 extern String arenaPort;
@@ -148,7 +148,7 @@ void updateTeam_stack_lightStatus()
         lastPollTimeMS = currentTime;
 
         // long int currentTime = millis();
-        if (eth_connected)
+        if (net_connected)
         {
             
             HTTPClient http;

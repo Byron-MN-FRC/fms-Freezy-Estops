@@ -13,11 +13,12 @@
 // #define PLC_MODEL_FIELD_TABLE
 #define PLC_MODEL_FIELD_HUB
 
+// Set in platformio.ini
+// #define CON_WIFI
+// #define CON_ETH
+
 #include "GlobalSettings.h"           // Include the GlobalSettings header
 #include <Arduino.h>
-#include <ETH.h>
-// #include <WiFi.h>
-// #include "WiFiCredentials.h"  // Include the WiFi credentials
 #include <ArduinoJson.h>
 #define FASTLED_INTERNAL        // Suppress build banner
 #include <FastLED.h>
@@ -40,18 +41,6 @@
 // Blink state variables (defined in BlinkState.h as extern)
 boolean ledBlinkState = true;
 long lastLedBlinkTime = 0;
-
-#ifndef ETH_PHY_CS
-#define ETH_PHY_TYPE     ETH_PHY_W5500
-#define ETH_PHY_ADDR     1
-#define ETH_PHY_CS       14
-#define ETH_PHY_IRQ      10
-#define ETH_PHY_RST      9
-#define ETH_PHY_SPI_HOST SPI2_HOST
-#define ETH_PHY_SPI_SCK  13
-#define ETH_PHY_SPI_MISO 12
-#define ETH_PHY_SPI_MOSI 11
-#endif
 
 #define USE_SERIAL Serial
 
@@ -118,10 +107,10 @@ extern String netmask;
 
 //Adafruit_NeoPixel strip = Adafruit_NeoPixel(20, LEDSTRIP, NEO_GRB + NEO_KHZ800);
 
-bool eth_connected = false;
+bool net_connected = false;
 
 void connected(boolean status) {
-  eth_connected = status;
+  net_connected = status;
   #ifdef PLC_MODEL_DRIVERS_STATION
   setAllDSIndicators(status ? CRGB::Green : CRGB::White, true);
   #endif
@@ -129,73 +118,26 @@ void connected(boolean status) {
   setHubLight(status ? CRGB::Orange : CRGB::White, true);
   #endif
   if (status) {
-      Serial.println("ETH Connected"); 
+      Serial.println("Network Connected"); 
   }
 }
 
-void onEvent(arduino_event_id_t event, arduino_event_info_t info) {
-  switch (event) {
-    // case ARDUINO_EVENT_WIFI_STA_START:
-    //   Serial.println("WiFi STA Started");
-    //   WiFi.setHostname("Freezy_Red");
-    //   break;
-    // case ARDUINO_EVENT_WIFI_STA_GOT_IP:
-    //   Serial.printf("WiFi STA Got IP: '%s'\n", WiFi.localIP().toString().c_str());
-    //   connected(true);
-    //   break;
-    case ARDUINO_EVENT_ETH_START:
-      Serial.println("ETH Started");
-      //set eth hostname here
-      ETH.setHostname("Freezy_ScoreTable");
-      break;
-    case ARDUINO_EVENT_ETH_CONNECTED: 
-      Serial.println("ETH Connected"); 
-      break;
-    case ARDUINO_EVENT_ETH_GOT_IP:    
-      Serial.printf("ETH Got IP: '%s'\n", esp_netif_get_desc(info.got_ip.esp_netif)); 
-      Serial.println(ETH);
-      connected(true);
-      break;
-    case ARDUINO_EVENT_ETH_LOST_IP:
-      Serial.println("ETH Lost IP");
-      connected(false);
-      break;
-    case ARDUINO_EVENT_ETH_DISCONNECTED:
-      Serial.println("ETH Disconnected");
-      connected(false);
-      break;
-    case ARDUINO_EVENT_ETH_STOP:
-      Serial.println("ETH Stopped");
-      connected(false);
-      break;
-    default: break;
-  }
-}
-
+// IP address configuration for network modules
 IPAddress local_ip(deviceIP.c_str());
 IPAddress gateway(gatewayIP.c_str());
 IPAddress subnet(netmask.c_str());
 IPAddress primaryDNS("8.8.8.8");
 IPAddress secondaryDNS("8.8.4.4");
-// void intiWifi(){
-//   WiFi.onEvent(onEvent);
-//   //eth_connected = true;
-// 	WiFi.mode(WIFI_STA);
-// 	WiFi.config(local_ip,gateway,subnet,primaryDNS,secondaryDNS);
-// 	WiFi.begin(ssid, password);
-// 	USE_SERIAL.print("Connecting to WiFi .. ");
-// 	while(WiFi.status() != WL_CONNECTED){
-// 		USE_SERIAL.print('.');
-// 		delay(1000);
-// 	}
-// 	//WiFi.reconnect();
-// 	Serial.println("Connected to the WiFi network");
-//   Serial.print("IP Address: ");
-//   Serial.println(WiFi.localIP());
-// 	delay(3000);
-// }
 
-void setupTeamLeds() {
+// Include the appropriate network module based on build configuration
+#ifdef CON_WIFI
+#include "NetworkWiFi.h"
+#endif
+#ifdef CON_ETH
+#include "NetworkEthernet.h"
+#endif
+
+void setupLEDs() {
   // The 12v stack light strip that has 3-LEDs per position.
   FastLED.addLeds<WS2811, LEDSTRIP, BRG>(g_LEDs, NUM_LEDS);               // Add our LED strip to the FastLED library
   FastLED.setTemperature(Tungsten100W);
@@ -214,64 +156,26 @@ void setup() {
   delay(5000);
 
   // Initialize the LED strip
-  setupTeamLeds();
+  setupLEDs();
 
   // Initialize the start match button
   pinMode(START_MATCH_BTN, INPUT_PULLDOWN);
-
 
    // Initialize the stop buttons
   for (int i = 0; i < NUM_BUTTONS; i++) {
       pinMode(stopButtonPins[i], INPUT_PULLDOWN);
   } 
   
-   // Initialize preferences
-    preferences.begin("settings", false);
+  // Initialize preferences
+  preferences.begin("settings", false);
 
-    // Load IP address and DHCP/Static configuration from preferences
-    deviceIP = preferences.getString("deviceIP", "");
-    useDHCP = preferences.getBool("useDHCP", true);
-    g_allianceColor = preferences.getString("allianceColor", "Red");
+  // Load IP address and DHCP/Static configuration from preferences
+  deviceIP = preferences.getString("deviceIP", "");
+  useDHCP = preferences.getBool("useDHCP", true);
+  g_allianceColor = preferences.getString("allianceColor", "Red");
 
-  #ifdef ESP32DEV
-    // Connect to the WiFi network
-    intiWifi();
-    pinMode(ONBOARD_LED, OUTPUT);
-  #endif // ESP32 
-
-  #ifdef ESP32_S3_DEVKITM_1
-    Network.onEvent(onEvent);
-    // Initialize Ethernet with DHCP or Static IP
-    if (useDHCP) {
-        ETH.begin(ETH_PHY_TYPE, ETH_PHY_ADDR, ETH_PHY_CS, ETH_PHY_IRQ, ETH_PHY_RST, ETH_PHY_SPI_HOST, ETH_PHY_SPI_SCK, ETH_PHY_SPI_MISO, ETH_PHY_SPI_MOSI);
-    } else {
-        IPAddress localIP;
-        if (localIP.fromString(deviceIP)) {
-          Serial.println("Setting static IP address.");
-          if ( !ETH.config(local_ip,gateway,subnet,primaryDNS,secondaryDNS) ) {
-            Serial.println("Error setting ethernet static ip.");
-          }
-          ETH.begin(ETH_PHY_TYPE, ETH_PHY_ADDR, ETH_PHY_CS, ETH_PHY_IRQ, ETH_PHY_RST, ETH_PHY_SPI_HOST, ETH_PHY_SPI_SCK, ETH_PHY_SPI_MISO, ETH_PHY_SPI_MOSI);
-          if ( !ETH.config(local_ip,gateway,subnet,primaryDNS,secondaryDNS) ) {
-            Serial.println("Error setting ethernet static ip.");
-          }
-        } else {
-            Serial.println("Invalid static IP address. Falling back to DHCP.");
-            ETH.begin(ETH_PHY_TYPE, ETH_PHY_ADDR, ETH_PHY_CS, ETH_PHY_IRQ, ETH_PHY_RST, ETH_PHY_SPI_HOST, ETH_PHY_SPI_SCK, ETH_PHY_SPI_MISO, ETH_PHY_SPI_MOSI);
-        }
-    }
-
-    // // Wait for Ethernet to connect
-    // while (!eth_connected) {
-    //     delay(100);
-    // }
-    // Print the IP address
-    Serial.print("init - IP Address: ");
-    Serial.println(ETH.localIP());
-
-
-  #endif // ESP32
-
+  // Initialize the network.
+  initNetwork();
 
   // Set up the web server
   setupWebServer();
@@ -366,21 +270,13 @@ void loop() {
     updateTeam_stack_lightStatus();
     #endif
 
-      // print the IP address every 5 seconds
+    // print the IP address every 5 seconds
     if (currentMillis - lastPrint >= 5000) {
         lastPrint = currentMillis;
         deviceIP = preferences.getString("deviceIP", "");
         Serial.printf("Preferences IP Address: %s\n", deviceIP.c_str());
         useDHCP = preferences.getBool("useDHCP", true);
-        #ifdef ESP32DEV
-          Serial.printf("Current WiFi IP Address: %s\n", WiFi.localIP().toString().c_str());
-          digitalWrite(ONBOARD_LED, !digitalRead(ONBOARD_LED));
-        #endif
-        #ifdef ESP32_S3_DEVKITM_1
-          Serial.printf("Current Wired IP Address: %s\n", ETH.localIP().toString().c_str());
-          
-        #endif
-        
+        printCurrentIP();
     }
     
     // int heartbeat_LED = 0;

@@ -23,7 +23,7 @@
 //extern Adafruit_NeoPixel strip;
 
 extern const char* baseUrl;
-extern bool eth_connected;
+extern bool net_connected;
 extern String allianceColor;
 extern String arenaIP;
 extern String arenaPort;
@@ -67,7 +67,7 @@ void getField_stack_lightStatusTest() {
 
 void getField_stack_lightStatus() {
     long int currentTime = millis();
-    if (eth_connected) {
+    if (net_connected) {
         if(currentTime > hartBeatTck){  //Get the status every 200ms
             hartBeatTck = currentTime + 200;
             

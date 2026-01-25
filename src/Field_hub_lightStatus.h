@@ -19,7 +19,7 @@
 #include "BlinkState.h"
 
 extern const char *baseUrl;
-extern bool eth_connected;
+extern bool net_connected;
 extern String allianceColor;
 extern String arenaIP;
 extern String arenaPort;
@@ -74,7 +74,7 @@ static const int pollIntervalMS = 200;
 void updateHub_lightStatus()
 {
     // long int currentTime = millis();
-    if (eth_connected)
+    if (net_connected)
     {
         long currentTime = millis();
         if(currentTime-lastPollTimeMS >= pollIntervalMS) {
