@@ -160,7 +160,7 @@ void updateTeam_stack_lightStatus()
         {
             
             HTTPClient http;
-            String url = "http://" + arenaIP + ":" + arenaPort + "/api/freezy/team_stack_light?alliance=" + allianceColor;;
+            String url = "http://" + arenaIP + ":" + arenaPort + "/api/freezy/team_stack_light?alliance=" + allianceColor;
             http.setTimeout(1000);
             http.setConnectTimeout(1000);
             http.begin(url);

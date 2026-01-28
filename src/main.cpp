@@ -29,6 +29,7 @@
 #include "WebServerSetup.h"           // Include the WebServerSetup header
 #include "BlinkState.h"               // Include the BlinkState header
 #include "battery.h"                  // Battery charge
+#include "postHubStatus.h"            // Post hub status to API
 
 // Board-specific pin definitions (must be before model headers that use them)
 #ifdef ESP32_S3_DEVKITM_1
@@ -48,6 +49,7 @@
 #include "Team_stack_lightStatus.h"   // Include the Team_stack_lightStatus
 #endif
 #ifdef PLC_MODEL_FIELD_HUB
+//#define NUM_LEDS 92
 #define NUM_LEDS 92
 #include "Field_hub_lightStatus.h"    // Include the Field_hub_lightStatus
 #endif
@@ -303,7 +305,8 @@ void loop() {
       float voltage = readBatteryVoltage();
       float percentage = calculatePercentage(voltage);
 
-      // TODO: Publish the battery voltage
+      // Post battery status to API
+      postBatteryStatus(voltage, percentage);
 
       // Print to Serial Monitor
       Serial.print("Battery Voltage: ");
