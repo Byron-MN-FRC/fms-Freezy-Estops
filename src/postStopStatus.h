@@ -17,7 +17,7 @@
 #include "GlobalSettings.h"
 
 extern const char* baseUrl;
-extern bool eth_connected;
+extern bool net_connected;
 extern String allianceColor;
 
 
@@ -29,7 +29,7 @@ extern String allianceColor;
  */
 void postSingleStopStatus(int i, bool stopButtonPressed) {
     // Send the HTTP POST request
-    if (eth_connected) {
+    if (net_connected) {
         HTTPClient http;
 
         // Define payload
@@ -88,7 +88,7 @@ void postSingleStopStatus(int i, bool stopButtonPressed) {
  */
 void postAllStopStatus(bool stopButtonStates[7]) {
     // Send the HTTP POST request
-    if (eth_connected) {
+    if (net_connected) {
         HTTPClient http;
         http.setTimeout(1000);
         http.setConnectTimeout(1000);

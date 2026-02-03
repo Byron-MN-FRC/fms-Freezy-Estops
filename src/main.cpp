@@ -10,32 +10,48 @@
                      /_/                                            
 */
 
+// Set in platformio.ini
+// #define PLC_MODEL_TEAM
+// #define PLC_MODEL_FIELD_TABLE
+// #define PLC_MODEL_FIELD_HUB
 
+// Set in platformio.ini
+// #define CON_WIFI
+// #define CON_ETH
+
+#include "GlobalSettings.h"           // Include the GlobalSettings header
 #include <Arduino.h>
-#include <ETH.h>
-// #include <WiFi.h>
-// #include "WiFiCredentials.h"  // Include the WiFi credentials
 #include <ArduinoJson.h>
 #define FASTLED_INTERNAL        // Suppress build banner
 #include <FastLED.h>
 #include "StartMatch.h"               // Include the StartMatch header
 #include "postStopStatus.h"           // Include the postStopStatus header
-#include "Field_stack_lightStatus.h"  // Include the Field_stack_lightStatus header
-#include "Team_stack_lightStatus.h"   // Include the Team_stack_lightStatus
 #include "WebServerSetup.h"           // Include the WebServerSetup header
-#include "GlobalSettings.h"           // Include the GlobalSettings header
+#include "BlinkState.h"               // Include the BlinkState header
+#include "battery.h"                  // Battery charge
+#include "postHubStatus.h"            // Post hub status to API
+
+// Board-specific pin definitions (must be before model headers that use them)
+#ifdef ESP32_S3_DEVKITM_1
+  #define LEDSTRIP 17             // Pin connected to NeoPixel
+#elif defined(ESP32DEV)
+  #define LEDSTRIP 4              // Pin connected to NeoPixel
+#endif
 
 
-#ifndef ETH_PHY_CS
-#define ETH_PHY_TYPE     ETH_PHY_W5500
-#define ETH_PHY_ADDR     1
-#define ETH_PHY_CS       14
-#define ETH_PHY_IRQ      10
-#define ETH_PHY_RST      9
-#define ETH_PHY_SPI_HOST SPI2_HOST
-#define ETH_PHY_SPI_SCK  13
-#define ETH_PHY_SPI_MISO 12
-#define ETH_PHY_SPI_MOSI 11
+// Model-specific LED count (must be before model headers that use them)
+#ifdef PLC_MODEL_FIELD_TABLE
+#define NUM_LEDS 16
+#include "Field_stack_lightStatus.h"  // Include the Field_stack_lightStatus header
+#endif
+#ifdef PLC_MODEL_TEAM
+#define NUM_LEDS 24
+#include "Team_stack_lightStatus.h"   // Include the Team_stack_lightStatus
+#endif
+#ifdef PLC_MODEL_FIELD_HUB
+//#define NUM_LEDS 92
+#define NUM_LEDS 92
+#include "Field_hub_lightStatus.h"    // Include the Field_hub_lightStatus
 #endif
 
 #define USE_SERIAL Serial
@@ -67,11 +83,8 @@ extern String netmask;
                                           39};   //3A stop                                         
 
   #define START_MATCH_BTN 40
-  #define LEDSTRIP 17             // Pin connected to NeoPixel
-  #define NUM_LEDS 24            // Number of LEDs in the strip
   int g_Brightness = 255;//15;         // 0-255 LED brightness scale
   // int g_PowerLimit = 50000;//900;        // 900mW Power Limit
-  CRGB g_LEDs[NUM_LEDS] = {0};    // Frame buffer for FastLED
 
   //#define ONBOARD_LED 26 //Board does not have
   #define ONBOARD_RGB 21
@@ -89,97 +102,40 @@ extern String netmask;
                                           27,   //3E stop
                                           32};   //3a stop
   #define START_MATCH_BTN 19
-  #define LEDSTRIP 4           // Pin connected to NeoPixel
   #define ONBOARD_LED 2
 #endif // ESP32DEV
 
 
 //Adafruit_NeoPixel strip = Adafruit_NeoPixel(20, LEDSTRIP, NEO_GRB + NEO_KHZ800);
 
-bool eth_connected = false;
+bool net_connected = false;
 
 void connected(boolean status) {
-  eth_connected = status;
+  net_connected = status;
+  #ifdef PLC_MODEL_TEAM
   setAllDSIndicators(status ? CRGB::Green : CRGB::White, true);
+  #endif
+  #ifdef PLC_MODEL_FIELD_HUB
+  setHubLight(status ? CRGB::Orange : CRGB::White, true);
+  #endif
   if (status) {
-      Serial.println("ETH Connected"); 
+      Serial.println("Network Connected"); 
   }
 }
 
-void onEvent(arduino_event_id_t event, arduino_event_info_t info) {
-  switch (event) {
-    // case ARDUINO_EVENT_WIFI_STA_START:
-    //   Serial.println("WiFi STA Started");
-    //   WiFi.setHostname("Freezy_Red");
-    //   break;
-    // case ARDUINO_EVENT_WIFI_STA_GOT_IP:
-    //   Serial.printf("WiFi STA Got IP: '%s'\n", WiFi.localIP().toString().c_str());
-    //   connected(true);
-    //   break;
-    case ARDUINO_EVENT_ETH_START:
-      Serial.println("ETH Started");
-      //set eth hostname here
-      ETH.setHostname("Freezy_ScoreTable");
-      break;
-    case ARDUINO_EVENT_ETH_CONNECTED: 
-      Serial.println("ETH Connected"); 
-      break;
-    case ARDUINO_EVENT_ETH_GOT_IP:    
-      Serial.printf("ETH Got IP: '%s'\n", esp_netif_get_desc(info.got_ip.esp_netif)); 
-      Serial.println(ETH);
-      connected(true);
-      break;
-    case ARDUINO_EVENT_ETH_LOST_IP:
-      Serial.println("ETH Lost IP");
-      connected(false);
-      break;
-    case ARDUINO_EVENT_ETH_DISCONNECTED:
-      Serial.println("ETH Disconnected");
-      connected(false);
-      break;
-    case ARDUINO_EVENT_ETH_STOP:
-      Serial.println("ETH Stopped");
-      connected(false);
-      break;
-    default: break;
-  }
-}
-
+// IP address configuration for network modules
 IPAddress local_ip(deviceIP.c_str());
 IPAddress gateway(gatewayIP.c_str());
 IPAddress subnet(netmask.c_str());
 IPAddress primaryDNS("8.8.8.8");
 IPAddress secondaryDNS("8.8.4.4");
-// void intiWifi(){
-//   WiFi.onEvent(onEvent);
-//   //eth_connected = true;
-// 	WiFi.mode(WIFI_STA);
-// 	WiFi.config(local_ip,gateway,subnet,primaryDNS,secondaryDNS);
-// 	WiFi.begin(ssid, password);
-// 	USE_SERIAL.print("Connecting to WiFi .. ");
-// 	while(WiFi.status() != WL_CONNECTED){
-// 		USE_SERIAL.print('.');
-// 		delay(1000);
-// 	}
-// 	//WiFi.reconnect();
-// 	Serial.println("Connected to the WiFi network");
-//   Serial.print("IP Address: ");
-//   Serial.println(WiFi.localIP());
-// 	delay(3000);
-// }
 
-void setupTeamLeds() {
-  // The 12v stack light strip that has 3-LEDs per position.
-  FastLED.addLeds<WS2811, LEDSTRIP, BRG>(g_LEDs, NUM_LEDS);               // Add our LED strip to the FastLED library
-  FastLED.setTemperature(Tungsten100W);
-  // The test black 
-  // FastLED.addLeds<WS2812B, LEDSTRIP, GRB>(g_LEDs, NUM_LEDS);               // Add our LED strip to the FastLED library
-	FastLED.setBrightness(g_Brightness);
-  //set_max_power_indicator_LED(LED_BUILTIN);                               // Light the builtin LED if we power throttle
-  // FastLED.setMaxPowerInMilliWatts(g_PowerLimit);                          // Set the power limit, above which brightness will be throttled
-  
-}
-
+// Include the appropriate network module based on build configuration
+#ifdef CON_WIFI
+#include "NetworkWiFi.h"
+#elif defined(CON_ETH)
+#include "NetworkEthernet.h"
+#endif
 
 // Setup function
 void setup() {
@@ -187,76 +143,45 @@ void setup() {
   delay(5000);
 
   // Initialize the LED strip
-  setupTeamLeds();
+  setupLEDs();
 
   // Initialize the start match button
   pinMode(START_MATCH_BTN, INPUT_PULLDOWN);
-
 
    // Initialize the stop buttons
   for (int i = 0; i < NUM_BUTTONS; i++) {
       pinMode(stopButtonPins[i], INPUT_PULLDOWN);
   } 
   
-   // Initialize preferences
-    preferences.begin("settings", false);
+  // Initialize preferences
+  preferences.begin("settings", false);
 
-    // Load IP address and DHCP/Static configuration from preferences
-    deviceIP = preferences.getString("deviceIP", "");
-    useDHCP = preferences.getBool("useDHCP", true);
-    g_allianceColor = preferences.getString("allianceColor", "Red");
+  // Load IP address and DHCP/Static configuration from preferences
+  deviceIP = preferences.getString("deviceIP", "");
+  useDHCP = preferences.getBool("useDHCP", true);
+  g_allianceColor = preferences.getString("allianceColor", "Red");
 
-  #ifdef ESP32DEV
-    // Connect to the WiFi network
-    intiWifi();
-    pinMode(ONBOARD_LED, OUTPUT);
-  #endif // ESP32 
-
-  #ifdef ESP32_S3_DEVKITM_1
-    Network.onEvent(onEvent);
-    // Initialize Ethernet with DHCP or Static IP
-    if (useDHCP) {
-        ETH.begin(ETH_PHY_TYPE, ETH_PHY_ADDR, ETH_PHY_CS, ETH_PHY_IRQ, ETH_PHY_RST, ETH_PHY_SPI_HOST, ETH_PHY_SPI_SCK, ETH_PHY_SPI_MISO, ETH_PHY_SPI_MOSI);
-    } else {
-        IPAddress localIP;
-        if (localIP.fromString(deviceIP)) {
-          Serial.println("Setting static IP address.");
-          if ( !ETH.config(local_ip,gateway,subnet,primaryDNS,secondaryDNS) ) {
-            Serial.println("Error setting ethernet static ip.");
-          }
-          ETH.begin(ETH_PHY_TYPE, ETH_PHY_ADDR, ETH_PHY_CS, ETH_PHY_IRQ, ETH_PHY_RST, ETH_PHY_SPI_HOST, ETH_PHY_SPI_SCK, ETH_PHY_SPI_MISO, ETH_PHY_SPI_MOSI);
-          if ( !ETH.config(local_ip,gateway,subnet,primaryDNS,secondaryDNS) ) {
-            Serial.println("Error setting ethernet static ip.");
-          }
-        } else {
-            Serial.println("Invalid static IP address. Falling back to DHCP.");
-            ETH.begin(ETH_PHY_TYPE, ETH_PHY_ADDR, ETH_PHY_CS, ETH_PHY_IRQ, ETH_PHY_RST, ETH_PHY_SPI_HOST, ETH_PHY_SPI_SCK, ETH_PHY_SPI_MISO, ETH_PHY_SPI_MOSI);
-        }
-    }
-
-    // // Wait for Ethernet to connect
-    // while (!eth_connected) {
-    //     delay(100);
-    // }
-    // Print the IP address
-    Serial.print("init - IP Address: ");
-    Serial.println(ETH.localIP());
-
-
-  #endif // ESP32
-
+  // Initialize the network.
+  initNetwork();
 
   // Set up the web server
   setupWebServer();
 
+  // Battery charge checker
+  #ifdef ONBATTERY
+  initBattery();
+  #endif
+
+  Serial.println("Battery Monitor");
+  Serial.println("Initializing...");
+
 }
 
-// Main loop
-void loop() {
-  static unsigned long lastStatusCheck = 0;
-  static unsigned long lastPrint = 0;
-    unsigned long currentMillis = millis();
+
+boolean lastStopButtonStates[NUM_BUTTONS];
+void processButtonStates() {
     // FastLED.clear(); // Clear the LED strip
+    boolean stateChanged = false;
 
     // Check if the start match button is pressed
     if (digitalRead(START_MATCH_BTN) == HIGH) {
@@ -275,6 +200,10 @@ void loop() {
         {
           stopButtonStates[i] = true;
         }
+        if(lastStopButtonStates[i] != stopButtonStates[i]) {
+          lastStopButtonStates[i] = stopButtonStates[i];
+          stateChanged = true;
+        }
       }
       else
       {
@@ -284,11 +213,18 @@ void loop() {
         {
           stopButtonStates[i] = false;
         }
+        if(lastStopButtonStates[i] != stopButtonStates[i]) {
+          lastStopButtonStates[i] = stopButtonStates[i];
+          stateChanged = true;
+        }
       }
     }
 
   // Call the postAllStopStatus method with the array
-  postAllStopStatus(stopButtonStates);
+  if(stateChanged) {
+    Serial.println("processButtonStates() statechanged=true");
+    postAllStopStatus(stopButtonStates);
+  }
 
 
 /*     // Check if the stop buttons are pressed
@@ -304,29 +240,42 @@ void loop() {
             postSingleStopStatus(i, true);
         }
     }
-     */
-    // Check alliance status every 500ms
-    if (currentMillis - lastStatusCheck >= 500) {
-        // getField_stack_lightStatus();
-        updateTeam_stack_lightStatus();
-        lastStatusCheck = currentMillis;  
-    }
+     */  
+}
+
+static unsigned long lastPrint = 0;
+static unsigned long lastBatteryCheck = 0;
+// Main loop
+// Because we are using HTTP requests synchronously, there is a limit to what we can do with LED blinking and other
+// effects.  
+// The loop runs fast, relying on each method to handle it's state changes accordingly.
+void loop() {
+    long currentMillis = millis();
+    #ifdef PLC_MODEL_TEAM
+    processButtonStates();
+    #endif
+
+    // Check alliance status
+    #ifdef PLC_MODEL_FIELD_HUB
+    updateHub_lightStatus();
+    #endif 
+    #ifdef PLC_MODEL_FIELD_TABLE
+      getField_stack_lightStatus();
+    #endif
+    #ifdef PLC_MODEL_TEAM
+    updateTeam_stack_lightStatus();
+    #endif
+
     // print the IP address every 5 seconds
     if (currentMillis - lastPrint >= 5000) {
         lastPrint = currentMillis;
         deviceIP = preferences.getString("deviceIP", "");
         Serial.printf("Preferences IP Address: %s\n", deviceIP.c_str());
         useDHCP = preferences.getBool("useDHCP", true);
-        #ifdef ESP32DEV
-          Serial.printf("Current WiFi IP Address: %s\n", WiFi.localIP().toString().c_str());
-          digitalWrite(ONBOARD_LED, !digitalRead(ONBOARD_LED));
-        #endif
-        #ifdef ESP32_S3_DEVKITM_1
-          Serial.printf("Current Wired IP Address: %s\n", ETH.localIP().toString().c_str());
-          
-        #endif
-        
+        printCurrentIP();
     }
+
+
     
     // int heartbeat_LED = 0;
     // // Use a case statement to set the g_LEDs color based on the heartbeat variable
@@ -345,7 +294,27 @@ void loop() {
     //         break;
     // }
     
-    Serial.printf("show");
-    FastLED.show(g_Brightness); //  Show and delay
-    delay(200);
+    // Serial.printf("show");
+    // FastLED.show(g_Brightness); //  Show and delay
+    // delay(50);
+
+    // Read battery voltage
+    #ifdef ONBATTERY
+    if (currentMillis - lastBatteryCheck >= 5000) {
+      lastBatteryCheck = currentMillis;
+      float voltage = readBatteryVoltage();
+      float percentage = calculatePercentage(voltage);
+
+      // Post battery status to API
+      postBatteryStatus(voltage, percentage);
+
+      // Print to Serial Monitor
+      Serial.print("Battery Voltage: ");
+      Serial.print(voltage, 2);
+      Serial.print("V | Charge: ");
+      Serial.print(percentage, 1);
+      Serial.print("%");
+      Serial.println("");
+    }
+    #endif
 }

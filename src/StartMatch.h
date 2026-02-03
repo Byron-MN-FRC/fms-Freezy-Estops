@@ -17,10 +17,10 @@
 
 
 extern const char* baseUrl;
-extern bool eth_connected;
+extern bool net_connected;
 
 void startMatchPost() {
-    if (eth_connected) {
+    if (net_connected) {
         HTTPClient http;
 
         // Define payload

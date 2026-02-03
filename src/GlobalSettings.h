@@ -18,8 +18,9 @@ String arenaPort = "8080";
 bool useDHCP = false;
 
 // Declare the deviceIP variable
-String deviceIP = "10.0.100.22";  // Red
+// String deviceIP = "10.0.100.22";  // Red
 // String deviceIP = "10.0.100.23"; // Blue
+String deviceIP = "10.0.100.24";  // Red Hub
 
 String gatewayIP = "10.0.100.3";
 
