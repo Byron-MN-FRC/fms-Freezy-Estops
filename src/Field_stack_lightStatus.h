@@ -17,16 +17,26 @@
 #define FASTLED_INTERNAL        // Suppress build banner
 #include <FastLED.h>
 #include "GlobalSettings.h"
+#include "ColorUtils.h"
+#include "BlinkState.h"
 
 //extern Adafruit_NeoPixel strip;
 
 extern const char* baseUrl;
-extern bool eth_connected;
+extern bool net_connected;
 extern String allianceColor;
 extern String arenaIP;
 extern String arenaPort;
 
-extern CRGB g_LEDs[]; // Declare the LED array
+CRGB g_LEDs[NUM_LEDS] = {0};
+
+
+void setupLEDs() {
+  // The 12v stack light strip that has 3-LEDs per position.
+  // LEDSTRIP macro must be defined before including this header
+  FastLED.addLeds<WS2811, LEDSTRIP, BRG>(g_LEDs, NUM_LEDS);
+  FastLED.setTemperature(Tungsten100W);
+}
 
 /**
  * @brief Sets the color of two LEDs based on the status.
@@ -46,6 +56,7 @@ void setLEDColor(int ledIndex1, int length, bool status, CRGB color) {
             g_LEDs[i] = CRGB::Black; // Turn off the LED
         }
     }
+    FastLED.show();
 }
 
 const CRGB RED_COLOR = CRGB(255, 0, 0);
@@ -64,12 +75,12 @@ void getField_stack_lightStatusTest() {
 
 void getField_stack_lightStatus() {
     long int currentTime = millis();
-    if (eth_connected) {
-        //if(currentTime > hartBeatTck){  //Get the status every 500ms
-            //hartBeatTck = currentTime + 500;
+    if (net_connected) {
+        if(currentTime > hartBeatTck){  //Get the status every 200ms
+            hartBeatTck = currentTime + 200;
             
             HTTPClient http;
-            String url = "http://" + arenaIP + ":" + arenaPort + "/api/freezy/field_stack_light";
+            String url = "http://" + arenaIP + ":" + arenaPort + "/api/freezy/field_stack_light?alliance=" + allianceColor;;
             http.begin(url);
             int httpResponseCode = http.GET();
 
@@ -129,7 +140,7 @@ void getField_stack_lightStatus() {
                 }
             }
             http.end();
-        //} //Get the status every 500ms
+        } //Get the status every 200ms
 
     } else {
         Serial.println("Network not connected! [FSL]");

@@ -1,4 +1,5 @@
 #include "WebServerSetup.h"
+#include "battery.h"
 
 // Define the web server and preferences objects
 AsyncWebServer server(80);
@@ -8,6 +9,27 @@ extern String arenaIP;
 extern bool useDHCP;
 extern String deviceIP;
 extern String arenaPort;
+
+// Connection type string (set at compile time)
+#ifdef CON_WIFI
+const char* connectionType = "WiFi";
+#elif defined(CON_ETH)
+const char* connectionType = "Ethernet";
+#else
+const char* connectionType = "Unknown";
+#endif
+
+// Model type string (set at compile time)
+#ifdef PLC_MODEL_TEAM
+const char* modelType = "Team Estops";
+#elif defined(PLC_MODEL_FIELD_TABLE)
+const char* modelType = "Field Estops";
+#elif defined(PLC_MODEL_FIELD_HUB)
+const char* modelType = "Field Hub";
+#else
+const char* modelType = "Unknown";
+#endif
+
 
 void setupWebServer() {
     // Load the alliance color from preferences
@@ -25,7 +47,8 @@ void setupWebServer() {
         // Serve the initial page with a button to go to the settings page
         String html = "<html><body>"
                       "<h1>Welcome to Freezy Estops</h1>"
-                      "<p>This is the initial page.</p>"
+                      "<p><strong>Model:</strong> " + String(modelType) + "</p>"
+                      "<p><strong>Connection:</strong> " + String(connectionType) + "</p>"
                       "<button onclick=\"location.href='/setup'\">Go to Settings</button>"
                       "</body></html>";
         request->send(200, "text/html", html);
@@ -35,6 +58,7 @@ void setupWebServer() {
         // Serve the HTML form for alliance color and network configuration
         String html = "<html><body>"
                       "<h1>Setup Configuration</h1>"
+                      "<p><em>" + String(modelType) + " (" + String(connectionType) + ")</em></p>"
                       "<form action=\"/setConfig\" method=\"POST\">"
                       "<label for=\"color\">Choose an alliance color: </label>"
                       "<select name=\"color\" id=\"color\">"
