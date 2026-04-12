@@ -56,9 +56,6 @@
 
 #define USE_SERIAL Serial
 
-// Define preferences objects
-String g_allianceColor;
-
 // Define the base URL for the API
 // const char* baseUrl = "http://192.168.10.124:8080";
 const char* baseUrl = "http://10.0.100.5:8080";
@@ -159,7 +156,7 @@ void setup() {
   // Load IP address and DHCP/Static configuration from preferences
   deviceIP = preferences.getString("deviceIP", "");
   useDHCP = preferences.getBool("useDHCP", true);
-  g_allianceColor = preferences.getString("allianceColor", "Red");
+  allianceColor = preferences.getString("allianceColor", "Red");
 
   // Initialize the network.
   initNetwork();
@@ -223,7 +220,12 @@ void processButtonStates() {
   // Call the postAllStopStatus method with the array
   if(stateChanged) {
     Serial.println("processButtonStates() statechanged=true");
+    #ifdef PLC_MODEL_FIELD_TABLE
+    postSingleStopStatus(0, stopButtonStates[0]);
+    #else
     postAllStopStatus(stopButtonStates);
+    #endif
+
   }
 
 
@@ -252,6 +254,9 @@ static unsigned long lastBatteryCheck = 0;
 void loop() {
     long currentMillis = millis();
     #ifdef PLC_MODEL_TEAM
+    processButtonStates();
+    #endif
+    #ifdef PLC_MODEL_FIELD_TABLE
     processButtonStates();
     #endif
 
