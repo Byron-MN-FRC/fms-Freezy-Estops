@@ -26,11 +26,14 @@ extern String allianceColor;
  * 
  * @param i The channel number.
  * @param stopButtonPressed The state of the stop button (false if pressed, true otherwise).
+ * @return true if the arena acknowledged the state.
  */
-void postSingleStopStatus(int i, bool stopButtonPressed) {
+bool postSingleStopStatus(int i, bool stopButtonPressed) {
     // Send the HTTP POST request
     if (net_connected) {
         HTTPClient http;
+        http.setTimeout(ARENA_HTTP_TIMEOUT_MS);
+        http.setConnectTimeout(ARENA_HTTP_TIMEOUT_MS);
 
         // Define payload
         JsonDocument payload;
@@ -76,8 +79,10 @@ void postSingleStopStatus(int i, bool stopButtonPressed) {
         
         // Close the connection
         http.end();
+        return httpResponseCode == HTTP_CODE_OK;
     } else {
         Serial.println("Network not connected![PSS]");
+        return false;
     }
 }
 
@@ -85,13 +90,14 @@ void postSingleStopStatus(int i, bool stopButtonPressed) {
  * Sends an HTTP POST request to update the stop status for all 6 channels.
  * 
  * @param stopButtonStates An array of the states of the stop buttons (false if pressed, true otherwise).
+ * @return true if the arena acknowledged the states.
  */
-void postAllStopStatus(bool stopButtonStates[7]) {
+bool postAllStopStatus(bool stopButtonStates[7]) {
     // Send the HTTP POST request
     if (net_connected) {
         HTTPClient http;
-        http.setTimeout(1000);
-        http.setConnectTimeout(1000);
+        http.setTimeout(ARENA_HTTP_TIMEOUT_MS);
+        http.setConnectTimeout(ARENA_HTTP_TIMEOUT_MS);
         
         // Define payload
         JsonDocument payload;
@@ -140,8 +146,10 @@ void postAllStopStatus(bool stopButtonStates[7]) {
 
         // Close the connection
         http.end();
+        return httpResponseCode == HTTP_CODE_OK;
     } else {
         Serial.println("Network not connected![PSS]");
+        return false;
     }
 }
 

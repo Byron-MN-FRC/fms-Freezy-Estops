@@ -26,4 +26,10 @@ String gatewayIP = "10.0.100.3";
 
 String netmask = "255.255.255.0";
 
+// Timeout, connect and read, for every HTTP call to the arena. On the field LAN the arena answers in a few
+// milliseconds, so anything longer is a lost packet, and lwIP would otherwise wait ~3 s to retransmit a lost SYN.
+// Every call blocks loop() and the stop buttons are only read between calls, so this is also the worst-case delay
+// before a press is noticed. A call that times out is simply retried on the next loop.
+#define ARENA_HTTP_TIMEOUT_MS 300
+
 #endif // GLOBALSETTINGS_H

@@ -129,15 +129,16 @@ void getField_stack_lightStatus() {
             hartBeatTck = currentTime + 200;
             
             HTTPClient http;
+            http.setTimeout(ARENA_HTTP_TIMEOUT_MS);
+            http.setConnectTimeout(ARENA_HTTP_TIMEOUT_MS);
             String url = "http://" + arenaIP + ":" + arenaPort + "/api/freezy/field_stack_light?alliance=" + allianceColor;;
             http.begin(url);
             int httpResponseCode = http.GET();
 
             if (httpResponseCode > 0) {
                 String response = http.getString();
-                // Serial.printf("GET request successful! HTTP code: %d\n", httpResponseCode);
-                // Serial.println("Response:");
-                Serial.println(response);
+                // The body is not printed: at 5 Hz it floods the serial log, and with no USB host attached each
+                // write can block for HWCDC's tx timeout, which is time the buttons are not being read.
 
                 // Parse and print JSON data
                 JsonDocument doc;

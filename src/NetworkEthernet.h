@@ -1,6 +1,11 @@
 #ifndef NETWORK_ETHERNET_H
 #define NETWORK_ETHERNET_H
 
+// SPI clock to the W5500. Must be defined before ETH.h, which only sets it if it is not already set. 20 MHz is the
+// core's default. If the link shows a steady few percent of lost frames (HTTP -1 / -11 errors against a healthy
+// arena, ping loss to this board only), try 10: a marginal SPI path drops CRC-bad frames silently.
+#define ETH_PHY_SPI_FREQ_MHZ 20
+
 #include <ETH.h>
 
 // Ethernet PHY configuration for W5500
@@ -88,7 +93,10 @@ void initNetwork() {
 }
 
 void printCurrentIP() {
-  Serial.printf("Current Wired IP Address: %s\n", ETH.localIP().toString().c_str());
+  // Link speed and duplex as negotiated by the W5500. A half-duplex result against a full-duplex switch port
+  // means collisions, which shows up as a steady few percent of lost frames.
+  Serial.printf("Current Wired IP Address: %s (%u Mbps, %s duplex)\n", ETH.localIP().toString().c_str(),
+                ETH.linkSpeed(), ETH.fullDuplex() ? "full" : "HALF");
 }
 
 #endif // NETWORK_ETHERNET_H
