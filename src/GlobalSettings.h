@@ -20,7 +20,7 @@ bool useDHCP = false;
 // Declare the deviceIP variable
 // String deviceIP = "10.0.100.22";  // Red
 // String deviceIP = "10.0.100.23"; // Blue
-String deviceIP = "10.0.100.24";  // Field
+String deviceIP = "10.0.100.26";  // Field
 
 String gatewayIP = "10.0.100.3";
 

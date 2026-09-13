@@ -68,8 +68,7 @@ void setFieldIndicator(int layerN, CRGB rgbColor, boolean blink)
         Serial.printf("setFieldIndicator: invalid values:  layerN=%i", layerN);
     }
 
-    updateBlinkState(500);
-
+    // Blink clock advances once per render pass, not here.
     if(blink && !ledBlinkState) {
         rgbColor=CRGB::Black;
     }
@@ -85,16 +84,46 @@ void setFieldIndicator(int layerN, CRGB rgbColor, boolean blink)
 
 const CRGB RED_COLOR = CRGB(255, 0, 0);
 const CRGB BLUE_COLOR = CRGB(0, 0, 255);
-const CRGB ORANGE_COLOR = CRGB(150, 100, 0);
+const CRGB ORANGE_COLOR = CRGB(250, 100, 0);
 const CRGB GREEN_COLOR = CRGB(0, 255, 0);
 const CRGB WHITE_COLOR = CRGB(20, 20, 20);
 int heartbeatState = 0;
 long int hartBeatTck = 0;
 long int currentTime = 0;
 
+// On-time and off-time of a blinking layer. Only knob for blink speed.
+#define FIELD_BLINK_RATE_MS 500
+// Redraw period. Independent of the 200 ms poll so blink rate is not quantized to it.
+#define FIELD_RENDER_INTERVAL_MS 20
+
+// Last values received from the arena.
+bool redStackLightStatus = false;
+bool blueStackLightStatus = false;
+bool orangeStackLightStatus = false;
+bool greenStackLightStatus = false;
+bool greenStackLightBlink = false;
+unsigned long lastRenderMS = 0;
+
+// Redraws the stack light from the cached arena state. Called every loop() so the blink
+// period is FIELD_BLINK_RATE_MS rather than the poll interval.
+void renderFieldStackLight() {
+    unsigned long now = millis();
+    if (now - lastRenderMS < FIELD_RENDER_INTERVAL_MS) {
+        return;
+    }
+    lastRenderMS = now;
+
+    updateBlinkState(FIELD_BLINK_RATE_MS);
+    setFieldIndicator(4, (redStackLightStatus ? RED_COLOR : CRGB::Black), false);
+    setFieldIndicator(3, (blueStackLightStatus ? BLUE_COLOR : CRGB::Black), false);
+    setFieldIndicator(2, (orangeStackLightStatus ? ORANGE_COLOR : CRGB::Black), false);
+    setFieldIndicator(1, (greenStackLightStatus ? GREEN_COLOR : CRGB::Black), greenStackLightBlink);
+    FastLED.show();
+}
 
 void getField_stack_lightStatus() {
     long int currentTime = millis();
+    renderFieldStackLight();
     if (net_connected) {
         if(currentTime > hartBeatTck){  //Get the status every 200ms
             hartBeatTck = currentTime + 200;
@@ -119,16 +148,12 @@ void getField_stack_lightStatus() {
                     return;
                 }
 
-                // Set the LED color based on the field_stack_light status
-                bool redStackLightStatus = doc["redStackLight"].is<bool>() ? doc["redStackLight"].as<bool>() : false;
-                bool blueStackLightStatus = doc["blueStackLight"].is<bool>() ? doc["blueStackLight"].as<bool>() : false;
-                bool orangeStackLightStatus = doc["orangeStackLight"].is<bool>() ? doc["orangeStackLight"].as<bool>() : false;
-                bool greenStackLightStatus = doc["greenStackLight"].is<bool>() ? doc["greenStackLight"].as<bool>() : false;
-                setFieldIndicator(4, (redStackLightStatus ? RED_COLOR : CRGB::Black), false);
-                setFieldIndicator(3, (blueStackLightStatus ? BLUE_COLOR : CRGB::Black), false);
-                setFieldIndicator(2, (orangeStackLightStatus ? ORANGE_COLOR : CRGB::Black), false);
-                setFieldIndicator(1, (greenStackLightStatus ? GREEN_COLOR : CRGB::Black), false);
-                FastLED.show();
+                // Cache the field_stack_light status; renderFieldStackLight() draws it.
+                redStackLightStatus = doc["redStackLight"].is<bool>() ? doc["redStackLight"].as<bool>() : false;
+                blueStackLightStatus = doc["blueStackLight"].is<bool>() ? doc["blueStackLight"].as<bool>() : false;
+                orangeStackLightStatus = doc["orangeStackLight"].is<bool>() ? doc["orangeStackLight"].as<bool>() : false;
+                greenStackLightStatus = doc["greenStackLight"].is<bool>() ? doc["greenStackLight"].as<bool>() : false;
+                greenStackLightBlink = doc["greenStackLightBlink"].is<bool>() ? doc["greenStackLightBlink"].as<bool>() : false;
 
                 
 
