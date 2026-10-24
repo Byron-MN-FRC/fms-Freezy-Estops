@@ -114,6 +114,12 @@ void renderFieldStackLight() {
     lastRenderMS = now;
 
     updateBlinkState(FIELD_BLINK_RATE_MS);
+    if (!net_connected) {
+        // Cycle a rainbow until the network is up.
+        fill_rainbow(g_LEDs, NUM_LEDS, millis() / 10, 256 / NUM_LEDS);
+        FastLED.show();
+        return;
+    }
     setFieldIndicator(4, (redStackLightStatus ? RED_COLOR : CRGB::Black), false);
     setFieldIndicator(3, (blueStackLightStatus ? BLUE_COLOR : CRGB::Black), false);
     setFieldIndicator(2, (orangeStackLightStatus ? ORANGE_COLOR : CRGB::Black), false);
