@@ -186,19 +186,59 @@ void setup() {
 // initial state is sent as soon as the network is up instead of being recorded and never posted.
 bool lastSentStopStates[NUM_BUTTONS];
 
+// A pin must hold a new level this long before it counts. A knock on the box, contact bounce, or noise on a long
+// cable opens or closes a contact for a few milliseconds; without this, one bad sample became a stop at the arena.
+// Every stop button is held far longer than this by a person, so the only cost is this much added latency.
+#define DEBOUNCE_MS 30
+
+struct DebouncedPin {
+    bool initialized;
+    bool stable;            // the accepted level
+    bool candidate;         // the level most recently read
+    unsigned long since;    // when candidate was first read
+};
+
+// Returns the debounced level of a pin (true = HIGH), logging any change rejected as too short so knocks and
+// wiring faults show up on the serial monitor with their width.
+bool readDebounced(DebouncedPin &pin, int gpio, unsigned long now) {
+    bool raw = digitalRead(gpio) == HIGH;
+    if (!pin.initialized) {
+        pin = {true, raw, raw, now};
+        return raw;
+    }
+    if (raw != pin.candidate) {
+        if (raw == pin.stable && pin.candidate != pin.stable) {
+            Serial.printf("Ignored %lu ms glitch on GPIO %d\n", now - pin.since, gpio);
+        }
+        pin.candidate = raw;
+        pin.since = now;
+    } else if (raw != pin.stable && now - pin.since >= DEBOUNCE_MS) {
+        pin.stable = raw;
+    }
+    return pin.stable;
+}
+
+DebouncedPin stopPins[NUM_BUTTONS];
+DebouncedPin startPin;
+bool lastStartPressed = false;
+
 void processButtonStates() {
-    // Check if the start match button is pressed
-    if (digitalRead(START_MATCH_BTN) == HIGH) {
+    unsigned long now = millis();
+
+    // Post once per press of the start match button, not on every loop while it is held.
+    bool startPressed = readDebounced(startPin, START_MATCH_BTN, now);
+    if (startPressed && !lastStartPressed) {
         Serial.println("Start match button pressed!");
         startMatchPost();
     }
+    lastStartPressed = startPressed;
 
     // Read the stop buttons with the same wire sense as before: the A-stops (indices 2, 4 and 6) report LOW as
     // true; the field stop and E-stops report LOW as false. See the input enum in the arena's plc/plc.go.
     bool stopButtonStates[NUM_BUTTONS];
     bool stateChanged = false;
     for (int i = 0; i < NUM_BUTTONS; i++) {
-        bool low = digitalRead(stopButtonPins[i]) == LOW;
+        bool low = !readDebounced(stopPins[i], stopButtonPins[i], now);
         stopButtonStates[i] = (i == 2 || i == 4 || i == 6) ? low : !low;
         if (i < NUM_REPORTED_BUTTONS && stopButtonStates[i] != lastSentStopStates[i]) {
             stateChanged = true;
