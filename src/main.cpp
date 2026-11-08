@@ -56,9 +56,6 @@
 
 #define USE_SERIAL Serial
 
-// Define preferences objects
-String g_allianceColor;
-
 // Define the base URL for the API
 // const char* baseUrl = "http://192.168.10.124:8080";
 const char* baseUrl = "http://10.0.100.5:8080";
@@ -71,6 +68,12 @@ extern String netmask;
 
 // Pins connected to the stop button
 #define NUM_BUTTONS 7
+// The score table wires and reports only the field stop; the team boards report all seven.
+#ifdef PLC_MODEL_FIELD_TABLE
+#define NUM_REPORTED_BUTTONS 1
+#else
+#define NUM_REPORTED_BUTTONS NUM_BUTTONS
+#endif
 
 //C:\Users\Capplegate\.platformio\penv\Scripts\platformio.exe  run -e esp32-s3-devkitm-1 -t upload
 #ifdef ESP32_S3_DEVKITM_1
@@ -159,7 +162,7 @@ void setup() {
   // Load IP address and DHCP/Static configuration from preferences
   deviceIP = preferences.getString("deviceIP", "");
   useDHCP = preferences.getBool("useDHCP", true);
-  g_allianceColor = preferences.getString("allianceColor", "Red");
+  allianceColor = preferences.getString("allianceColor", "Red");
 
   // Initialize the network.
   initNetwork();
@@ -178,69 +181,43 @@ void setup() {
 }
 
 
-boolean lastStopButtonStates[NUM_BUTTONS];
-void processButtonStates() {
-    // FastLED.clear(); // Clear the LED strip
-    boolean stateChanged = false;
+// The stop states most recently acknowledged by the arena. A change is re-sent every loop until the POST succeeds,
+// so a timed-out or lost request cannot drop a press. Zero at boot differs from a released e-stop (true), so the
+// initial state is sent as soon as the network is up instead of being recorded and never posted.
+bool lastSentStopStates[NUM_BUTTONS];
 
+void processButtonStates() {
     // Check if the start match button is pressed
     if (digitalRead(START_MATCH_BTN) == HIGH) {
         Serial.println("Start match button pressed!");
         startMatchPost();
     }
 
-    // Create an array to store the states of the stop buttons
+    // Read the stop buttons with the same wire sense as before: the A-stops (indices 2, 4 and 6) report LOW as
+    // true; the field stop and E-stops report LOW as false. See the input enum in the arena's plc/plc.go.
     bool stopButtonStates[NUM_BUTTONS];
-    for (int i = 0; i < NUM_BUTTONS; i++)
-    {
-      if (i == 2 || i == 4 || i == 6)
-      {
-        stopButtonStates[i] = false;
-        if (digitalRead(stopButtonPins[i]) == LOW)
-        {
-          stopButtonStates[i] = true;
-        }
-        if(lastStopButtonStates[i] != stopButtonStates[i]) {
-          lastStopButtonStates[i] = stopButtonStates[i];
-          stateChanged = true;
-        }
-      }
-      else
-      {
-        // Invert the ESTOPs  only
-        stopButtonStates[i] = true;
-        if (digitalRead(stopButtonPins[i]) == LOW)
-        {
-          stopButtonStates[i] = false;
-        }
-        if(lastStopButtonStates[i] != stopButtonStates[i]) {
-          lastStopButtonStates[i] = stopButtonStates[i];
-          stateChanged = true;
-        }
-      }
-    }
-
-  // Call the postAllStopStatus method with the array
-  if(stateChanged) {
-    Serial.println("processButtonStates() statechanged=true");
-    postAllStopStatus(stopButtonStates);
-  }
-
-
-/*     // Check if the stop buttons are pressed
+    bool stateChanged = false;
     for (int i = 0; i < NUM_BUTTONS; i++) {
-        if (digitalRead(stopButtonPins[i]) == HIGH) {
-            stopButtonPressed[i] = true;
-            if (stopButtonPressed[i]) {
-                Serial.printf("Stop button %d pressed!\n", i);
-            }
-            postSingleStopStatus(i, false);
-        } else{
-            stopButtonPressed[i] = false;
-            postSingleStopStatus(i, true);
+        bool low = digitalRead(stopButtonPins[i]) == LOW;
+        stopButtonStates[i] = (i == 2 || i == 4 || i == 6) ? low : !low;
+        if (i < NUM_REPORTED_BUTTONS && stopButtonStates[i] != lastSentStopStates[i]) {
+            stateChanged = true;
         }
     }
-     */  
+    if (!stateChanged) {
+        return;
+    }
+
+    Serial.println("processButtonStates() statechanged=true");
+    bool acknowledged;
+    #ifdef PLC_MODEL_FIELD_TABLE
+    acknowledged = postSingleStopStatus(0, stopButtonStates[0]);
+    #else
+    acknowledged = postAllStopStatus(stopButtonStates);
+    #endif
+    if (acknowledged) {
+        memcpy(lastSentStopStates, stopButtonStates, sizeof(stopButtonStates));
+    }
 }
 
 static unsigned long lastPrint = 0;
@@ -252,6 +229,9 @@ static unsigned long lastBatteryCheck = 0;
 void loop() {
     long currentMillis = millis();
     #ifdef PLC_MODEL_TEAM
+    processButtonStates();
+    #endif
+    #ifdef PLC_MODEL_FIELD_TABLE
     processButtonStates();
     #endif
 

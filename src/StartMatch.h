@@ -14,7 +14,7 @@
 
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
-
+#include "GlobalSettings.h"
 
 extern const char* baseUrl;
 extern bool net_connected;
@@ -22,6 +22,8 @@ extern bool net_connected;
 void startMatchPost() {
     if (net_connected) {
         HTTPClient http;
+        http.setTimeout(ARENA_HTTP_TIMEOUT_MS);
+        http.setConnectTimeout(ARENA_HTTP_TIMEOUT_MS);
 
         // Define payload
         JsonDocument payload;
